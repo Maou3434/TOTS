@@ -35,41 +35,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        
-        if (session?.user) {
-          // Check if admin
-          if (session.user.email === 'admin@dungeoncrawler.com') {
-            setIsAdmin(true);
-            setTeam(null);
-          } else {
-            setIsAdmin(false);
-            // Fetch team data
-            const { data: teamData } = await supabase
-              .from('teams')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (teamData) {
-              setTeam(teamData);
-            }
-          }
-        } else {
-          setIsAdmin(false);
-          setTeam(null);
-        }
-        setLoading(false);
+    // Check for a saved session in localStorage on initial load
+    const savedSessionData = localStorage.getItem('dungeon-delight-team-session');
+    if (savedSessionData) {
+      const { team: savedTeam, session: savedSession, isAdmin: savedIsAdmin } = JSON.parse(savedSessionData);
+      if (savedIsAdmin) {
+        setIsAdmin(true);
+        setSession(savedSession);
+      } else if (savedTeam) {
+        setTeam(savedTeam);
+        setSession(savedSession);
       }
-    );
+    }
+    setLoading(false);
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
+    // We keep this listener for any Supabase-based auth events if they are added back later,
+    // but our primary session logic for team/admin is now manual.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // If a Supabase session appears (e.g. from a previous admin login before the code change),
+      // and we don't have a manual session, we can handle it.
+      // Otherwise, our manual session takes precedence.
+      const manualSessionExists = !!localStorage.getItem('dungeon-delight-team-session');
+      if (!manualSessionExists && session) {
+        setSession(session);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -80,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Find team by name
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
-        .select('id, password_hash')
+        .select('*')
         .eq('team_name', teamName)
         .single();
 
@@ -88,33 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: 'Team not found' };
       }
 
-      // Simple password check (in production, use proper hashing)
+      // Simple password check. In a real app, you'd compare hashes.
       if (teamData.password_hash !== password) {
         return { error: 'Invalid password' };
       }
 
-      // Create a fake email for Supabase auth
-      const email = `${teamName.toLowerCase().replace(/\s+/g, '')}@team.local`;
-      
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password: teamData.id
-      });
-
-      if (error) {
-        // If user doesn't exist in auth, create them
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password: teamData.id,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
-        
-        if (signUpError) {
-          return { error: signUpError.message };
-        }
-      }
+      // Manually set the team state since we are not using Supabase Auth for teams.
+      // We also need to simulate a "session" for the app to know a user is logged in.
+      // A simple approach is to store the team info in localStorage.
+      const fakeSession = { user: { id: teamData.id, app_metadata: { team_id: teamData.id } } } as any;
+      setSession(fakeSession);
+      setTeam(teamData);
+      localStorage.setItem('dungeon-delight-team-session', JSON.stringify({ team: teamData, session: fakeSession, isAdmin: false }));
 
       return {};
     } catch (error) {
@@ -140,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('teams')
         .insert({
           team_name: teamName,
-          password_hash: password, // In production, hash this
+          password_hash: password, // Storing password directly. WARNING: Not secure for production.
           character_class: characterClass as any
         })
         .select()
@@ -148,22 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (teamError || !teamData) {
         return { error: 'Failed to create team' };
-      }
-
-      // Create auth user
-      const email = `${teamName.toLowerCase().replace(/\s+/g, '')}@team.local`;
-      const { error: authError } = await supabase.auth.signUp({
-        email,
-        password: teamData.id,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`
-        }
-      });
-
-      if (authError) {
-        // Clean up team record if auth creation failed
-        await supabase.from('teams').delete().eq('id', teamData.id);
-        return { error: authError.message };
       }
 
       return {};
@@ -177,31 +135,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'Invalid admin credentials' };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: 'admin@dungeoncrawler.com',
-      password: 'admin123'
-    });
-
-    if (error) {
-      // Create admin user if doesn't exist
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: 'admin@dungeoncrawler.com',
-        password: 'admin123',
-        options: {
-          emailRedirectTo: `${window.location.origin}/`
-        }
-      });
-      
-      if (signUpError) {
-        return { error: 'Admin setup failed' };
-      }
-    }
+    // Manually set admin state and a fake session
+    const fakeAdminSession = { user: { id: 'admin-user', email: 'admin@dungeon-delight.app' } } as any;
+    setIsAdmin(true);
+    setSession(fakeAdminSession);
+    setTeam(null);
+    localStorage.setItem('dungeon-delight-team-session', JSON.stringify({ session: fakeAdminSession, isAdmin: true }));
 
     return {};
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // It's good practice to still call this in case there's a lingering Supabase session
+    // from before the logic change. It won't cause an error if there's no session.
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Error signing out from Supabase:', error.message);
+
+    // Manually clear our custom team session
+    setTeam(null);
+    setSession(null);
+    localStorage.removeItem('dungeon-delight-team-session');
   };
 
   const value = {
