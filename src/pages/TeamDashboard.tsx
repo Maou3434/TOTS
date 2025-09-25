@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, Sword, Shield, Zap, Heart, Star, Package } from 'lucide-react';
+import { LogOut, Sword, Shield, Zap, Heart, Star, Package, Users } from 'lucide-react';
+import { Database } from '@/integrations/supabase/types';
 
 interface Dungeon {
   id: string;
@@ -16,15 +16,8 @@ interface Dungeon {
   min_level: number;
 }
 
-interface InventoryItem {
-  id: string;
-  item_type: string;
-  item_name: string;
-  rarity: string;
-  description: string;
-  stats: any;
-  obtained_at: string;
-}
+type InventoryItem = Database['public']['Tables']['inventory']['Row'];
+type Player = Database['public']['Tables']['players']['Row'];
 
 interface DungeonAttempt {
   id: string;
@@ -55,18 +48,26 @@ const getRankColor = (rank: string) => {
   }
 };
 
+const getAvgTeamLevel = (players: Player[]) => {
+  if (!players || players.length === 0) return 1;
+  const totalLevel = players.reduce((sum, player) => sum + player.level, 0);
+  return Math.floor(totalLevel / players.length);
+};
+
 export default function TeamDashboard() {
-  const { team, signOut } = useAuth();
+  const { team, signOut, loading: authLoading } = useAuth();
   const [dungeons, setDungeons] = useState<Dungeon[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [attempts, setAttempts] = useState<DungeonAttempt[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (team) {
+      fetchData();
+    }
+  }, [team]);
 
   const fetchData = async () => {
+    if (!team) return;
     try {
       // Fetch dungeons
       const { data: dungeonsData } = await supabase
@@ -77,15 +78,15 @@ export default function TeamDashboard() {
       // Fetch inventory
       const { data: inventoryData } = await supabase
         .from('inventory')
-        .select('*')
-        .eq('team_id', team?.id)
+        .select('*', { count: 'exact' })
+        .eq('team_id', team.id)
         .order('obtained_at', { ascending: false });
 
       // Fetch attempts
       const { data: attemptsData } = await supabase
         .from('dungeon_attempts')
         .select('*, dungeons(name)')
-        .eq('team_id', team?.id)
+        .eq('team_id', team.id)
         .order('attempted_at', { ascending: false });
 
       setDungeons(dungeonsData || []);
@@ -125,7 +126,7 @@ export default function TeamDashboard() {
     }
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -147,7 +148,7 @@ export default function TeamDashboard() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-primary">⚔️ {team.team_name}</h1>
-            <p className="text-muted-foreground capitalize">Level {team.level} {team.character_class}</p>
+            <p className="text-muted-foreground capitalize">Average Level {getAvgTeamLevel(team.players)}</p>
           </div>
           <Button variant="outline" onClick={signOut}>
             <LogOut className="h-4 w-4 mr-2" />
@@ -155,43 +156,33 @@ export default function TeamDashboard() {
           </Button>
         </div>
 
-        {/* Character Stats */}
+        {/* Team Stats & Players */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sword className="h-5 w-5" />
-              Character Stats
+              <Users className="h-5 w-5" />
+              Team Roster
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <Heart className="h-6 w-6 mx-auto mb-2 text-red-500" />
-                <p className="font-semibold">Health</p>
-                <p className="text-2xl font-bold">{team.health}</p>
-              </div>
-              <div className="text-center">
-                <Zap className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                <p className="font-semibold">Mana</p>
-                <p className="text-2xl font-bold">{team.mana}</p>
-              </div>
-              <div className="text-center">
-                <Sword className="h-6 w-6 mx-auto mb-2 text-red-600" />
-                <p className="font-semibold">Attack</p>
-                <p className="text-2xl font-bold">{team.attack}</p>
-              </div>
-              <div className="text-center">
-                <Shield className="h-6 w-6 mx-auto mb-2 text-gray-500" />
-                <p className="font-semibold">Defense</p>
-                <p className="text-2xl font-bold">{team.defense}</p>
-              </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              {team.players.map(player => (
+                <Card key={player.id} className="p-4">
+                  <CardHeader className="p-0 mb-2">
+                    <CardTitle className="text-lg">{player.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground capitalize">Lvl {player.level} {player.character_class}</p>
+                  </CardHeader>
+                  <CardContent className="p-0 text-sm space-y-1">
+                    <p><Heart className="inline h-4 w-4 mr-2 text-red-500" />{player.health} HP</p>
+                    <p><Zap className="inline h-4 w-4 mr-2 text-blue-500" />{player.mana} MP</p>
+                    <p><Sword className="inline h-4 w-4 mr-2 text-gray-600" />{player.attack} ATK</p>
+                    <p><Shield className="inline h-4 w-4 mr-2 text-gray-400" />{player.defense} DEF</p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            <div className="mt-4">
-              <div className="flex justify-between mb-2">
-                <span>Experience</span>
-                <span>{team.experience}/100</span>
-              </div>
-              <Progress value={team.experience} className="h-2" />
+            <div className="mt-4 text-center">
+              <p className="font-semibold">Team Stamina: <span className="text-primary font-bold">{team.stamina}</span></p>
             </div>
           </CardContent>
         </Card>
@@ -206,7 +197,7 @@ export default function TeamDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {dungeons.map((dungeon) => {
-                const canAttempt = team.level >= dungeon.min_level;
+                const canAttempt = getAvgTeamLevel(team.players) >= dungeon.min_level;
                 const hasPendingAttempt = attempts.some(
                   attempt => attempt.dungeon_id === dungeon.id && attempt.status === 'pending'
                 );

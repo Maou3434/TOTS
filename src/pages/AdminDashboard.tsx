@@ -2,22 +2,23 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { LogOut, CheckCircle, XCircle, Clock, Crown } from 'lucide-react';
+import { Database } from '@/integrations/supabase/types';
+
+type Player = Database['public']['Tables']['players']['Row'];
 
 interface PendingAttempt {
   id: string;
   team_id: string;
   dungeon_id: string;
-  status: string;
+  status: Database['public']['Enums']['attempt_status'];
   attempted_at: string;
   teams: {
     team_name: string;
-    character_class: string;
-    level: number;
+    players: Player[];
   };
   dungeons: {
     name: string;
@@ -64,10 +65,14 @@ const getRandomRarity = () => {
   return 'common';
 };
 
-const generateRandomDrop = (characterClass: string, dungeonRank: string) => {
+const generateRandomDrop = (players: Player[], dungeonRank: string) => {
   const itemTypes = ['skill', 'artifact', 'set_piece'] as const;
   const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
   let itemName = '';
+
+  // Pick a random player from the team to determine class-specific drops
+  const randomPlayer = players[Math.floor(Math.random() * players.length)];
+  const characterClass = randomPlayer.character_class;
   
   switch (itemType) {
     case 'skill':
@@ -117,7 +122,7 @@ export default function AdminDashboard() {
         .from('dungeon_attempts')
         .select(`
           *,
-          teams(team_name, character_class, level),
+          teams(team_name, players(*)),
           dungeons(name, rank)
         `)
         .eq('status', 'pending')
@@ -154,7 +159,7 @@ export default function AdminDashboard() {
 
       // If approved, generate and add a random drop
       if (approved) {
-        const drop = generateRandomDrop(attempt.teams.character_class, attempt.dungeons.rank);
+        const drop = generateRandomDrop(attempt.teams.players, attempt.dungeons.rank);
         
         const { error: inventoryError } = await supabase
           .from('inventory')
@@ -264,8 +269,8 @@ export default function AdminDashboard() {
                       <div className="space-y-2">
                         <div>
                           <h3 className="font-semibold text-lg">{attempt.teams.team_name}</h3>
-                          <p className="text-sm text-muted-foreground capitalize">
-                            Level {attempt.teams.level} {attempt.teams.character_class}
+                          <p className="text-sm text-muted-foreground">
+                            Players: {attempt.teams.players.map(p => `${p.name} (Lvl ${p.level} ${p.character_class})`).join(', ')}
                           </p>
                         </div>
                         <div>

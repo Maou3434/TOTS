@@ -1,37 +1,18 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Shield, Sword, Zap, Target, Crown, Axe } from 'lucide-react';
-
-const classIcons = {
-  warrior: Sword,
-  mage: Zap,
-  archer: Target,
-  assassin: Shield,
-  paladin: Crown,
-  berserker: Axe
-};
-
-const classDescriptions = {
-  warrior: "High health and defense, balanced damage",
-  mage: "High mana and magical damage, low health",
-  archer: "High speed and ranged damage",
-  assassin: "High speed and critical hits, low health",
-  paladin: "Balanced stats with healing abilities",
-  berserker: "High attack but low defense"
-};
 
 export default function Auth() {
   const { session, signInWithTeam, signUpTeam, signInAsAdmin } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('team-login');
+  const navigate = useNavigate();
 
   // Team login form
   const [teamLoginData, setTeamLoginData] = useState({
@@ -43,7 +24,6 @@ export default function Auth() {
   const [teamSignupData, setTeamSignupData] = useState({
     teamName: '',
     password: '',
-    characterClass: ''
   });
 
   // Admin login form
@@ -77,20 +57,9 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (!teamSignupData.characterClass) {
-      toast({
-        title: "Character class required",
-        description: "Please select a character class",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    const { error } = await signUpTeam(
+    const { data, error } = await signUpTeam(
       teamSignupData.teamName,
-      teamSignupData.password,
-      teamSignupData.characterClass
+      teamSignupData.password
     );
     
     if (error) {
@@ -99,12 +68,13 @@ export default function Auth() {
         description: error,
         variant: "destructive"
       });
-    } else {
+      setIsLoading(false);
+    } else if (data) {
       toast({
-        title: "Team created successfully!",
-        description: "You can now log in with your team credentials"
+        title: "Team created!",
+        description: "Now, let's assemble your members."
       });
-      setActiveTab('team-login');
+      navigate(`/add-members/${data.id}`);
     }
 
     setIsLoading(false);
@@ -192,35 +162,8 @@ export default function Auth() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="character-class">Character Class</Label>
-                  <Select
-                    value={teamSignupData.characterClass}
-                    onValueChange={(value) => setTeamSignupData(prev => ({ ...prev, characterClass: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose your class" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(classDescriptions).map(([className, description]) => {
-                        const Icon = classIcons[className as keyof typeof classIcons];
-                        return (
-                          <SelectItem key={className} value={className}>
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4" />
-                              <div>
-                                <div className="font-medium capitalize">{className}</div>
-                                <div className="text-sm text-muted-foreground">{description}</div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Creating Team...' : 'Create Team'}
+                  {isLoading ? 'Creating Team...' : 'Next: Add Members'}
                 </Button>
               </form>
             </TabsContent>

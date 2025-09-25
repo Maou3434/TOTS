@@ -86,6 +86,47 @@ export type Database = {
         }
         Relationships: []
       }
+      players: {
+        Row: {
+          id: string
+          team_id: string
+          name: string
+          character_class: Database["public"]["Enums"]["character_class"]
+          level: number
+          experience: number
+          health: number
+          mana: number
+          attack: number
+          defense: number
+          speed: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          name: string
+          character_class: Database["public"]["Enums"]["character_class"]
+          level?: number
+          experience?: number
+          health?: number
+          mana?: number
+          attack?: number
+          defense?: number
+          speed?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          [key: string]: any // Allow any for updates
+        }
+        Relationships: [{
+          foreignKeyName: "players_team_id_fkey"
+          columns: ["team_id"]
+          referencedRelation: "teams"
+          referencedColumns: ["id"]
+        }]
+      }
       inventory: {
         Row: {
           description: string | null
@@ -139,47 +180,26 @@ export type Database = {
       }
       teams: {
         Row: {
-          attack: number
-          character_class: Database["public"]["Enums"]["character_class"]
           created_at: string
-          defense: number
-          experience: number
-          health: number
           id: string
-          level: number
-          mana: number
           password_hash: string
-          speed: number
+          stamina: number
           team_name: string
           updated_at: string
         }
         Insert: {
-          attack?: number
-          character_class: Database["public"]["Enums"]["character_class"]
           created_at?: string
-          defense?: number
-          experience?: number
-          health?: number
           id?: string
-          level?: number
-          mana?: number
           password_hash: string
-          speed?: number
+          stamina?: number
           team_name: string
           updated_at?: string
         }
         Update: {
-          attack?: number
-          character_class?: Database["public"]["Enums"]["character_class"]
           created_at?: string
-          defense?: number
-          experience?: number
-          health?: number
           id?: string
-          level?: number
-          mana?: number
           password_hash?: string
-          speed?: number
+          stamina?: number
           team_name?: string
           updated_at?: string
         }
@@ -190,7 +210,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_updated_at_column: {
+        Args: Record<string, unknown>
+        Returns: unknown
+      }
     }
     Enums: {
       attempt_status: "pending" | "approved" | "rejected"

@@ -1,18 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
+import { Database } from '@/integrations/supabase/types';
 
-interface Team {
-  id: string;
-  team_name: string;
-  character_class: string;
-  level: number;
-  experience: number;
-  health: number;
-  mana: number;
-  attack: number;
-  defense: number;
-  speed: number;
+type Player = Database['public']['Tables']['players']['Row'];
+
+interface Team extends Omit<Database['public']['Tables']['teams']['Row'], 'password_hash'> {
+  players: Player[];
 }
 
 interface AuthContextType {
@@ -21,7 +15,7 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   signInWithTeam: (teamName: string, password: string) => Promise<{ error?: string }>;
-  signUpTeam: (teamName: string, password: string, characterClass: string) => Promise<{ error?: string }>;
+  signUpTeam: (teamName: string, password: string) => Promise<{ data?: { id: string }; error?: string; }>;
   signOut: () => Promise<void>;
   signInAsAdmin: (username: string, password: string) => Promise<{ error?: string }>;
 }
@@ -69,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Find team by name
       const { data: teamData, error: teamError } = await supabase
         .from('teams')
-        .select('*')
+        .select('*, players(*)')
         .eq('team_name', teamName)
         .single();
 
@@ -87,8 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // A simple approach is to store the team info in localStorage.
       const fakeSession = { user: { id: teamData.id, app_metadata: { team_id: teamData.id } } } as any;
       setSession(fakeSession);
-      setTeam(teamData);
-      localStorage.setItem('dungeon-delight-team-session', JSON.stringify({ team: teamData, session: fakeSession, isAdmin: false }));
+      const fullTeamData = { ...teamData, players: teamData.players || [] };
+      setTeam(fullTeamData);
+      localStorage.setItem('dungeon-delight-team-session', JSON.stringify({ team: fullTeamData, session: fakeSession, isAdmin: false }));
 
       return {};
     } catch (error) {
@@ -96,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUpTeam = async (teamName: string, password: string, characterClass: string) => {
+  const signUpTeam = async (teamName: string, password: string) => {
     try {
       // Check if team name already exists
       const { data: existingTeam } = await supabase
@@ -115,16 +110,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .insert({
           team_name: teamName,
           password_hash: password, // Storing password directly. WARNING: Not secure for production.
-          character_class: characterClass as any
         })
         .select()
         .single();
 
       if (teamError || !teamData) {
-        return { error: 'Failed to create team' };
+        return { error: teamError?.message || 'Failed to create team' };
       }
 
-      return {};
+      return { data: { id: teamData.id } };
     } catch (error) {
       return { error: 'Registration failed' };
     }

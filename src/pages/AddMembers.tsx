@@ -4,19 +4,51 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Users } from 'lucide-react';
+import { Constants } from '@/integrations/supabase/types';
+
+interface MemberState {
+  name: string;
+  characterClass: string;
+}
+
+const baseStatsByClass: Record<string, Omit<Database['public']['Tables']['players']['Insert'], 'id' | 'team_id' | 'name' | 'character_class'>> = {
+  warrior: { health: 120, mana: 30, attack: 12, defense: 8, speed: 8 },
+  mage: { health: 80, mana: 80, attack: 8, defense: 4, speed: 10 },
+  archer: { health: 90, mana: 40, attack: 10, defense: 5, speed: 12 },
+  assassin: { health: 85, mana: 50, attack: 11, defense: 4, speed: 15 },
+  paladin: { health: 110, mana: 60, attack: 10, defense: 7, speed: 9 },
+  berserker: { health: 100, mana: 20, attack: 15, defense: 3, speed: 10 },
+};
+
+const defaultStats: Omit<Database['public']['Tables']['players']['Insert'], 'id' | 'team_id' | 'name' | 'character_class'> = {
+  level: 1,
+  experience: 0,
+  health: 100,
+  mana: 50,
+  attack: 10,
+  defense: 5,
+  speed: 10,
+};
+
+import { Database } from '@/integrations/supabase/types';
 
 export default function AddMembers() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
-  const [members, setMembers] = useState(['', '', '']);
+  const [members, setMembers] = useState<MemberState[]>([
+    { name: '', characterClass: '' },
+    { name: '', characterClass: '' },
+    { name: '', characterClass: '' },
+  ]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleMemberNameChange = (index: number, name: string) => {
+  const handleMemberChange = (index: number, field: keyof MemberState, value: string) => {
     const newMembers = [...members];
-    newMembers[index] = name;
+    newMembers[index][field] = value;
     setMembers(newMembers);
   };
 
@@ -31,19 +63,26 @@ export default function AddMembers() {
     }
 
     const memberRecords = members
-      .filter(name => name.trim() !== '')
-      .map(name => ({
-        team_id: teamId,
-        name: name.trim(),
-      }));
+      .filter(member => member.name.trim() !== '' && member.characterClass.trim() !== '')
+      .map(member => {
+        const classStats = baseStatsByClass[member.characterClass] || defaultStats;
+        return {
+          team_id: teamId,
+          name: member.name.trim(),
+          character_class: member.characterClass as Database['public']['Enums']['character_class'],
+          ...classStats,
+          level: 1,
+          experience: 0,
+        };
+      });
 
-    if (memberRecords.length !== 3) {
-      toast({ title: 'Incomplete Team', description: 'Please enter names for all three members.', variant: 'destructive' });
+    if (memberRecords.length < 3) {
+      toast({ title: 'Incomplete Team', description: 'Please provide a name and class for all three members.', variant: 'destructive' });
       setIsLoading(false);
       return;
     }
 
-    const { error } = await supabase.from('team_members').insert(memberRecords);
+    const { error } = await supabase.from('players').insert(memberRecords);
 
     if (error) {
       toast({
@@ -73,16 +112,28 @@ export default function AddMembers() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {members.map((name, index) => (
-              <div key={index}>
+            {members.map((member, index) => (
+              <div key={index} className="space-y-2">
                 <Label htmlFor={`member-${index + 1}`}>Member {index + 1} Name</Label>
                 <Input
                   id={`member-${index + 1}`}
-                  value={name}
-                  onChange={(e) => handleMemberNameChange(index, e.target.value)}
+                  value={member.name}
+                  onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
                   placeholder={`Enter name for member ${index + 1}`}
                   required
                 />
+                <Select
+                  value={member.characterClass}
+                  onValueChange={(value) => handleMemberChange(index, 'characterClass', value)}
+                  required
+                >
+                  <SelectTrigger><SelectValue placeholder={`Select class for member ${index + 1}`} /></SelectTrigger>
+                  <SelectContent>
+                    {Constants.public.Enums.character_class.map(charClass => (
+                      <SelectItem key={charClass} value={charClass} className="capitalize">{charClass}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
             <Button type="submit" className="w-full" disabled={isLoading}>
