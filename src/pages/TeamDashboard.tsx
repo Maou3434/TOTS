@@ -48,12 +48,6 @@ const getRankColor = (rank: string) => {
   }
 };
 
-const getAvgTeamLevel = (players: Player[]) => {
-  if (!players || players.length === 0) return 1;
-  const totalLevel = players.reduce((sum, player) => sum + player.level, 0);
-  return Math.floor(totalLevel / players.length);
-};
-
 export default function TeamDashboard() {
   const { team, signOut, loading: authLoading } = useAuth();
   const [dungeons, setDungeons] = useState<Dungeon[]>([]);
@@ -148,7 +142,6 @@ export default function TeamDashboard() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-primary">⚔️ {team.team_name}</h1>
-            <p className="text-muted-foreground capitalize">Average Level {getAvgTeamLevel(team.players)}</p>
           </div>
           <Button variant="outline" onClick={signOut}>
             <LogOut className="h-4 w-4 mr-2" />
@@ -170,7 +163,7 @@ export default function TeamDashboard() {
                 <Card key={player.id} className="p-4">
                   <CardHeader className="p-0 mb-2">
                     <CardTitle className="text-lg">{player.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground capitalize">Lvl {player.level} {player.character_class}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{player.character_class}</p>
                   </CardHeader>
                   <CardContent className="p-0 text-sm space-y-1">
                     <p><Heart className="inline h-4 w-4 mr-2 text-red-500" />{player.health} HP</p>
@@ -197,7 +190,7 @@ export default function TeamDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {dungeons.map((dungeon) => {
-                const canAttempt = getAvgTeamLevel(team.players) >= dungeon.min_level;
+                const canAttempt = true; // Removed level check
                 const hasPendingAttempt = attempts.some(
                   attempt => attempt.dungeon_id === dungeon.id && attempt.status === 'pending'
                 );

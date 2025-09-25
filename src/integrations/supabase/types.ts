@@ -92,13 +92,10 @@ export type Database = {
           team_id: string
           name: string
           character_class: Database["public"]["Enums"]["character_class"]
-          level: number
-          experience: number
           health: number
           mana: number
           attack: number
           defense: number
-          speed: number
           created_at: string
           updated_at: string
         }
@@ -107,18 +104,24 @@ export type Database = {
           team_id: string
           name: string
           character_class: Database["public"]["Enums"]["character_class"]
-          level?: number
-          experience?: number
           health?: number
           mana?: number
           attack?: number
           defense?: number
-          speed?: number
           created_at?: string
           updated_at?: string
         }
         Update: {
-          [key: string]: any // Allow any for updates
+          id?: string
+          team_id?: string
+          name?: string
+          character_class?: Database["public"]["Enums"]["character_class"]
+          health?: number
+          mana?: number
+          attack?: number
+          defense?: number
+          created_at?: string
+          updated_at?: string
         }
         Relationships: [{
           foreignKeyName: "players_team_id_fkey"

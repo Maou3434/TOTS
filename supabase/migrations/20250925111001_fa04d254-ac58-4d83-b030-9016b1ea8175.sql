@@ -10,6 +10,16 @@ CREATE TABLE public.teams (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   team_name TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  stamina INTEGER NOT NULL DEFAULT 100,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create players table
+CREATE TABLE public.players (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
   character_class character_class NOT NULL,
   level INTEGER NOT NULL DEFAULT 1,
   experience INTEGER NOT NULL DEFAULT 0,
@@ -58,6 +68,7 @@ CREATE TABLE public.inventory (
 
 -- Enable Row Level Security
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dungeons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.dungeon_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory ENABLE ROW LEVEL SECURITY;
@@ -70,6 +81,16 @@ CREATE POLICY "Teams can insert their own data" ON public.teams
   FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Teams can update their own data" ON public.teams
+  FOR UPDATE USING (true);
+
+-- RLS Policies for players
+CREATE POLICY "Anyone can view players" ON public.players
+  FOR SELECT USING (true);
+
+CREATE POLICY "Teams can create their own players" ON public.players
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Teams can update their own players" ON public.players
   FOR UPDATE USING (true);
 
 -- RLS Policies for dungeons (public read)
@@ -120,5 +141,10 @@ $$ LANGUAGE plpgsql SET search_path = public;
 -- Create trigger for automatic timestamp updates
 CREATE TRIGGER update_teams_updated_at
   BEFORE UPDATE ON public.teams
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_players_updated_at
+  BEFORE UPDATE ON public.players
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();

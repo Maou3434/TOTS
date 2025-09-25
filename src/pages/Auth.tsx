@@ -13,34 +13,33 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('team-login');
   const navigate = useNavigate();
-
-  // Team login form
-  const [teamLoginData, setTeamLoginData] = useState({
-    teamName: '',
-    password: ''
-  });
-
-  // Team signup form
-  const [teamSignupData, setTeamSignupData] = useState({
-    teamName: '',
-    password: '',
-  });
-
-  // Admin login form
-  const [adminData, setAdminData] = useState({
-    username: '',
-    password: ''
+  
+  const [formData, setFormData] = useState({
+    teamLogin: { teamName: '', password: '' },
+    teamSignup: { teamName: '', password: '' },
+    adminLogin: { username: '', password: '' },
   });
 
   if (session) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const handleInputChange = (form: 'teamLogin' | 'teamSignup' | 'adminLogin', field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [form]: {
+        ...prev[form],
+        [field]: value,
+      }
+    }));
+  };
+
   const handleTeamLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signInWithTeam(teamLoginData.teamName, teamLoginData.password);
+    const { teamName, password } = formData.teamLogin;
+    const { error } = await signInWithTeam(teamName, password);
     
     if (error) {
       toast({
@@ -57,10 +56,8 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { data, error } = await signUpTeam(
-      teamSignupData.teamName,
-      teamSignupData.password
-    );
+    const { teamName, password } = formData.teamSignup;
+    const { data, error } = await signUpTeam(teamName, password);
     
     if (error) {
       toast({
@@ -68,7 +65,6 @@ export default function Auth() {
         description: error,
         variant: "destructive"
       });
-      setIsLoading(false);
     } else if (data) {
       toast({
         title: "Team created!",
@@ -84,7 +80,8 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signInAsAdmin(adminData.username, adminData.password);
+    const { username, password } = formData.adminLogin;
+    const { error } = await signInAsAdmin(username, password);
     
     if (error) {
       toast({
@@ -120,8 +117,8 @@ export default function Auth() {
                   <Label htmlFor="team-name">Team Name</Label>
                   <Input
                     id="team-name"
-                    value={teamLoginData.teamName}
-                    onChange={(e) => setTeamLoginData(prev => ({ ...prev, teamName: e.target.value }))}
+                    value={formData.teamLogin.teamName}
+                    onChange={(e) => handleInputChange('teamLogin', 'teamName', e.target.value)}
                     required
                   />
                 </div>
@@ -130,8 +127,8 @@ export default function Auth() {
                   <Input
                     id="team-password"
                     type="password"
-                    value={teamLoginData.password}
-                    onChange={(e) => setTeamLoginData(prev => ({ ...prev, password: e.target.value }))}
+                    value={formData.teamLogin.password}
+                    onChange={(e) => handleInputChange('teamLogin', 'password', e.target.value)}
                     required
                   />
                 </div>
@@ -147,8 +144,8 @@ export default function Auth() {
                   <Label htmlFor="new-team-name">Team Name</Label>
                   <Input
                     id="new-team-name"
-                    value={teamSignupData.teamName}
-                    onChange={(e) => setTeamSignupData(prev => ({ ...prev, teamName: e.target.value }))}
+                    value={formData.teamSignup.teamName}
+                    onChange={(e) => handleInputChange('teamSignup', 'teamName', e.target.value)}
                     required
                   />
                 </div>
@@ -157,8 +154,8 @@ export default function Auth() {
                   <Input
                     id="new-team-password"
                     type="password"
-                    value={teamSignupData.password}
-                    onChange={(e) => setTeamSignupData(prev => ({ ...prev, password: e.target.value }))}
+                    value={formData.teamSignup.password}
+                    onChange={(e) => handleInputChange('teamSignup', 'password', e.target.value)}
                     required
                   />
                 </div>
@@ -174,8 +171,8 @@ export default function Auth() {
                   <Label htmlFor="admin-username">Username</Label>
                   <Input
                     id="admin-username"
-                    value={adminData.username}
-                    onChange={(e) => setAdminData(prev => ({ ...prev, username: e.target.value }))}
+                    value={formData.adminLogin.username}
+                    onChange={(e) => handleInputChange('adminLogin', 'username', e.target.value)}
                     required
                   />
                 </div>
@@ -184,8 +181,8 @@ export default function Auth() {
                   <Input
                     id="admin-password"
                     type="password"
-                    value={adminData.password}
-                    onChange={(e) => setAdminData(prev => ({ ...prev, password: e.target.value }))}
+                    value={formData.adminLogin.password}
+                    onChange={(e) => handleInputChange('adminLogin', 'password', e.target.value)}
                     required
                   />
                 </div>

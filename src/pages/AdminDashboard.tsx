@@ -36,15 +36,28 @@ const skillsByClass = {
   berserker: ['Rage', 'Blood Lust', 'Intimidate', 'Whirlwind', 'Fury']
 };
 
-const artifacts = [
-  'Ring of Power', 'Amulet of Wisdom', 'Boots of Speed', 'Gloves of Strength',
-  'Cloak of Shadows', 'Crown of Kings', 'Belt of Giants', 'Bracers of Defense'
-];
-
-const sets = [
-  'Dragon Scale Armor', 'Phoenix Feather Set', 'Shadow Walker Garb', 'Celestial Robes',
-  'Berserker\'s Fury', 'Archmage Vestments', 'Ranger\'s Pride', 'Assassin\'s Edge'
-];
+const artifactSets = {
+  "Lion's Set": {
+    "2-set": "Gains ATK +50",
+    "4-set": "Ignores 20% of enemy defense"
+  },
+  "Angel in White Set": {
+    "2-set": "Gains HP +250",
+    "4-set": "Reduces own ATK by 10%, increases allies' ATK by 10%"
+  },
+  "Golden Gladiator Set": {
+    "2-set": "Gains DEF +30",
+    "4-set": "Reduces own HP by 200, increases allies' DEF by 20"
+  },
+  "Destroyer Set": {
+    "2-set": "Power gauge rate increases by 10%",
+    "4-set": "Starts battle with 30% power gauge"
+  },
+  "Red Panther Set": {
+    "2-set": "Gains ATK +15 and DEF +15",
+    "4-set": "Reduces own HP by 200, gains an additional ATK +15 and DEF +15"
+  }
+};
 
 const rarities = [
   { name: 'common', weight: 50 },
@@ -65,9 +78,7 @@ const getRandomRarity = () => {
   return 'common';
 };
 
-const generateRandomDrop = (players: Player[], dungeonRank: string) => {
-  const itemTypes = ['skill', 'artifact', 'set_piece'] as const;
-  const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+const generateRandomDrop = (players: Player[], dungeonRank: string, itemType: 'skill' | 'artifact' | 'set_piece') => {
   let itemName = '';
 
   // Pick a random player from the team to determine class-specific drops
@@ -80,10 +91,9 @@ const generateRandomDrop = (players: Player[], dungeonRank: string) => {
       itemName = classSkills[Math.floor(Math.random() * classSkills.length)];
       break;
     case 'artifact':
-      itemName = artifacts[Math.floor(Math.random() * artifacts.length)];
-      break;
     case 'set_piece':
-      itemName = sets[Math.floor(Math.random() * sets.length)];
+      const setNames = Object.keys(artifactSets);
+      itemName = setNames[Math.floor(Math.random() * setNames.length)];
       break;
   }
 
@@ -94,15 +104,23 @@ const generateRandomDrop = (players: Player[], dungeonRank: string) => {
   const baseStats = Math.floor(Math.random() * 10) + 1;
   const bonusStats = Math.floor(baseStats * rankModifier);
 
+  let itemStats: any = {
+    power: baseStats + bonusStats,
+    bonus: rankModifier > 0 ? `+${Math.floor(rankModifier * 100)}% from ${dungeonRank} rank dungeon` : null
+  };
+
+  if (itemType === 'artifact' || itemType === 'set_piece') {
+    const setBonuses = artifactSets[itemName as keyof typeof artifactSets];
+    itemStats['2-set bonus'] = setBonuses['2-set'];
+    itemStats['4-set bonus'] = setBonuses['4-set'];
+  }
+
   return {
     item_type: itemType as any,
     item_name: itemName,
     rarity: rarity as any,
     description: `A ${rarity} ${itemType.replace('_', ' ')} obtained from dungeon exploration`,
-    stats: {
-      power: baseStats + bonusStats,
-      bonus: rankModifier > 0 ? `+${Math.floor(rankModifier * 100)}% from ${dungeonRank} rank dungeon` : null
-    }
+    stats: itemStats
   };
 };
 
@@ -159,22 +177,28 @@ export default function AdminDashboard() {
 
       // If approved, generate and add a random drop
       if (approved) {
-        const drop = generateRandomDrop(attempt.teams.players, attempt.dungeons.rank);
+        const drops = [
+          generateRandomDrop(attempt.teams.players, attempt.dungeons.rank, 'skill'),
+          generateRandomDrop(attempt.teams.players, attempt.dungeons.rank, 'artifact'),
+          generateRandomDrop(attempt.teams.players, attempt.dungeons.rank, 'artifact'),
+        ];
+
+        const inventoryItems = drops.map(drop => ({
+          team_id: attempt.team_id,
+          obtained_from: attemptId,
+          ...drop
+        }));
         
         const { error: inventoryError } = await supabase
           .from('inventory')
-          .insert({
-            team_id: attempt.team_id,
-            obtained_from: attemptId,
-            ...drop
-          });
+          .insert(inventoryItems);
 
         if (inventoryError) throw inventoryError;
       }
 
       toast({
         title: approved ? "Attempt approved!" : "Attempt rejected",
-        description: approved ? "Random drop has been added to team inventory" : "The team has been notified"
+        description: approved ? "1 skill and 2 artifacts have been added to the team's inventory." : "The team has been notified"
       });
 
       // Refresh the list
@@ -270,7 +294,7 @@ export default function AdminDashboard() {
                         <div>
                           <h3 className="font-semibold text-lg">{attempt.teams.team_name}</h3>
                           <p className="text-sm text-muted-foreground">
-                            Players: {attempt.teams.players.map(p => `${p.name} (Lvl ${p.level} ${p.character_class})`).join(', ')}
+                            Players: {attempt.teams.players.map(p => `${p.name} (${p.character_class})`).join(', ')}
                           </p>
                         </div>
                         <div>

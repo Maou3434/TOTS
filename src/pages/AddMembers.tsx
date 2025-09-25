@@ -16,22 +16,12 @@ interface MemberState {
 }
 
 const baseStatsByClass: Record<string, Omit<Database['public']['Tables']['players']['Insert'], 'id' | 'team_id' | 'name' | 'character_class'>> = {
-  warrior: { health: 120, mana: 30, attack: 12, defense: 8, speed: 8 },
-  mage: { health: 80, mana: 80, attack: 8, defense: 4, speed: 10 },
-  archer: { health: 90, mana: 40, attack: 10, defense: 5, speed: 12 },
-  assassin: { health: 85, mana: 50, attack: 11, defense: 4, speed: 15 },
-  paladin: { health: 110, mana: 60, attack: 10, defense: 7, speed: 9 },
-  berserker: { health: 100, mana: 20, attack: 15, defense: 3, speed: 10 },
-};
-
-const defaultStats: Omit<Database['public']['Tables']['players']['Insert'], 'id' | 'team_id' | 'name' | 'character_class'> = {
-  level: 1,
-  experience: 0,
-  health: 100,
-  mana: 50,
-  attack: 10,
-  defense: 5,
-  speed: 10,
+  warrior: { health: 120, mana: 30, attack: 12, defense: 8 },
+  mage: { health: 80, mana: 80, attack: 8, defense: 4 },
+  archer: { health: 90, mana: 40, attack: 10, defense: 5 },
+  assassin: { health: 85, mana: 50, attack: 11, defense: 4 },
+  paladin: { health: 110, mana: 60, attack: 10, defense: 7 },
+  berserker: { health: 100, mana: 20, attack: 15, defense: 3 },
 };
 
 import { Database } from '@/integrations/supabase/types';
@@ -65,14 +55,12 @@ export default function AddMembers() {
     const memberRecords = members
       .filter(member => member.name.trim() !== '' && member.characterClass.trim() !== '')
       .map(member => {
-        const classStats = baseStatsByClass[member.characterClass] || defaultStats;
+        const classStats = baseStatsByClass[member.characterClass];
         return {
           team_id: teamId,
           name: member.name.trim(),
           character_class: member.characterClass as Database['public']['Enums']['character_class'],
           ...classStats,
-          level: 1,
-          experience: 0,
         };
       });
 

@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return {};
     } catch (error) {
-      return { error: 'Sign in failed' };
+      return { error: (error as Error).message || 'An unexpected error occurred during sign-in.' };
     }
   };
 
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { data: { id: teamData.id } };
     } catch (error) {
-      return { error: 'Registration failed' };
+      return { error: (error as Error).message || 'An unexpected error occurred during registration.' };
     }
   };
 
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // from before the logic change. It won't cause an error if there's no session.
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Error signing out from Supabase:', error.message);
-
+    
     // Manually clear our custom team session
     setTeam(null);
     setSession(null);
