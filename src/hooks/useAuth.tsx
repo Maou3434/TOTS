@@ -17,6 +17,7 @@ interface AuthContextType {
   signInWithTeam: (teamName: string, password: string) => Promise<{ error?: string }>;
   signUpTeam: (teamName: string, password: string) => Promise<{ data?: { id: string }; error?: string; }>;
   signOut: () => Promise<void>;
+  setTeam: React.Dispatch<React.SetStateAction<Team | null>>;
   signInAsAdmin: (username: string, password: string) => Promise<{ error?: string }>;
 }
 
@@ -28,20 +29,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const calculateAndApplyStamina = async (teamData: Team) => {
+    const now = new Date();
+    const lastUpdate = new Date(teamData.updated_at);
+    const hoursPassed = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60));
+    
+    let newStamina = teamData.stamina;
+    if (hoursPassed > 0 && teamData.stamina < 20) {
+      newStamina = Math.min(20, teamData.stamina + hoursPassed);
+      // Update stamina in the database
+      const { error } = await supabase
+        .from('teams')
+        .update({ stamina: newStamina, updated_at: now.toISOString() })
+        .eq('id', teamData.id);
+      if (error) console.error("Error updating stamina on session load:", error);
+    }
+    return { ...teamData, stamina: newStamina };
+  };
+
   useEffect(() => {
     // Check for a saved session in localStorage on initial load
     const savedSessionData = localStorage.getItem('dungeon-delight-team-session');
     if (savedSessionData) {
-      const { team: savedTeam, session: savedSession, isAdmin: savedIsAdmin } = JSON.parse(savedSessionData);
-      if (savedIsAdmin) {
-        setIsAdmin(true);
-        setSession(savedSession);
-      } else if (savedTeam) {
-        setTeam(savedTeam);
-        setSession(savedSession);
-      }
+      (async () => {
+        const { team: savedTeam, session: savedSession, isAdmin: savedIsAdmin } = JSON.parse(savedSessionData);
+        if (savedIsAdmin && savedSession) {
+          setIsAdmin(true);
+          setSession(savedSession);
+        } else if (savedTeam) {
+          const updatedTeam = await calculateAndApplyStamina(savedTeam);
+          setTeam(updatedTeam);
+          setSession(savedSession);
+        }
+        setLoading(false);
+      })();
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
 
     // We keep this listener for any Supabase-based auth events if they are added back later,
     // but our primary session logic for team/admin is now manual.
@@ -76,14 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: 'Invalid password' };
       }
 
+      const fullTeamDataWithStamina = await calculateAndApplyStamina({ ...teamData, players: teamData.players || [] });
+
       // Manually set the team state since we are not using Supabase Auth for teams.
       // We also need to simulate a "session" for the app to know a user is logged in.
       // A simple approach is to store the team info in localStorage.
       const fakeSession = { user: { id: teamData.id, app_metadata: { team_id: teamData.id } } } as any;
       setSession(fakeSession);
-      const fullTeamData = { ...teamData, players: teamData.players || [] };
-      setTeam(fullTeamData);
-      localStorage.setItem('dungeon-delight-team-session', JSON.stringify({ team: fullTeamData, session: fakeSession, isAdmin: false }));
+      setTeam(fullTeamDataWithStamina);
+      localStorage.setItem('dungeon-delight-team-session', JSON.stringify({ team: fullTeamDataWithStamina, session: fakeSession, isAdmin: false }));
 
       return {};
     } catch (error) {
@@ -159,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithTeam,
     signUpTeam,
     signOut,
+    setTeam,
     signInAsAdmin
   };
 

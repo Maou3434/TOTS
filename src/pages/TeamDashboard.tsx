@@ -23,8 +23,7 @@ interface DungeonAttempt {
   id: string;
   dungeon_id: string;
   status: string;
-  attempted_at: string;
-  dungeons: { name: string };
+  dungeons: { name: string, rank: string };
 }
 
 const getRarityColor = (rarity: string) => {
@@ -48,8 +47,17 @@ const getRankColor = (rank: string) => {
   }
 };
 
+const staminaCosts: Record<string, number> = {
+  E: 0,
+  D: 1,
+  C: 2,
+  B: 3,
+  A: 4,
+  S: 5,
+};
+
 export default function TeamDashboard() {
-  const { team, signOut, loading: authLoading } = useAuth();
+  const { team, signOut, loading: authLoading, setTeam } = useAuth();
   const [dungeons, setDungeons] = useState<Dungeon[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [attempts, setAttempts] = useState<DungeonAttempt[]>([]);
@@ -79,7 +87,7 @@ export default function TeamDashboard() {
       // Fetch attempts
       const { data: attemptsData } = await supabase
         .from('dungeon_attempts')
-        .select('*, dungeons(name)')
+        .select('*, dungeons(name, rank)')
         .eq('team_id', team.id)
         .order('attempted_at', { ascending: false });
 
@@ -95,7 +103,24 @@ export default function TeamDashboard() {
 
   const attemptDungeon = async (dungeonId: string) => {
     try {
-      const { error } = await supabase
+      const dungeon = dungeons.find(d => d.id === dungeonId);
+      if (!dungeon) throw new Error("Dungeon not found");
+
+      const cost = staminaCosts[dungeon.rank];
+      if (team && team.stamina < cost) {
+        toast({ title: "Not enough stamina!", description: `You need ${cost} stamina to attempt this dungeon.`, variant: "destructive" });
+        return;
+      }
+
+      // Deduct stamina
+      const newStamina = team!.stamina - cost;
+      const { error: staminaError } = await supabase.from('teams').update({ stamina: newStamina }).eq('id', team!.id);
+      if (staminaError) throw staminaError;
+
+      // Update local team state for immediate UI feedback
+      setTeam({ ...team!, stamina: newStamina });
+
+      const { error: attemptError } = await supabase
         .from('dungeon_attempts')
         .insert({
           team_id: team?.id,
@@ -103,7 +128,7 @@ export default function TeamDashboard() {
           status: 'pending'
         });
 
-      if (error) throw error;
+      if (attemptError) throw attemptError;
 
       toast({
         title: "Dungeon attempt submitted!",
@@ -189,11 +214,27 @@ export default function TeamDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {dungeons.map((dungeon) => {
-                const canAttempt = true; // Removed level check
+              {dungeons.map((dungeon, index, arr) => {
+                const completedRanks = new Set(
+                  attempts
+                    .filter(a => a.status === 'approved')
+                    .map(a => a.dungeons.rank)
+                );
+
+                const rankOrder = ['E', 'D', 'C', 'B', 'A', 'S'];
+                const currentRankIndex = rankOrder.indexOf(dungeon.rank);
+                const prevRank = currentRankIndex > 0 ? rankOrder[currentRankIndex - 1] : null;
+
+                const isUnlocked = ['E', 'D'].includes(dungeon.rank) || (prevRank && completedRanks.has(prevRank));
+                
+                const staminaCost = staminaCosts[dungeon.rank];
+                const hasEnoughStamina = team.stamina >= staminaCost;
+
                 const hasPendingAttempt = attempts.some(
                   attempt => attempt.dungeon_id === dungeon.id && attempt.status === 'pending'
                 );
+                
+                const canAttempt = isUnlocked && hasEnoughStamina;
 
                 return (
                   <div key={dungeon.id} className="border rounded-lg p-4 space-y-2">
@@ -201,7 +242,7 @@ export default function TeamDashboard() {
                       <div>
                         <h3 className="font-semibold">{dungeon.name}</h3>
                         <p className="text-sm text-muted-foreground">{dungeon.description}</p>
-                        <p className="text-sm">Min Level: {dungeon.min_level}</p>
+                        <p className="text-sm">Stamina Cost: <span className="font-bold">{staminaCost}</span></p>
                       </div>
                       <Badge className={getRankColor(dungeon.rank)}>
                         Rank {dungeon.rank}
@@ -212,10 +253,11 @@ export default function TeamDashboard() {
                       disabled={!canAttempt || hasPendingAttempt}
                       className="w-full"
                       variant={canAttempt ? "default" : "secondary"}
-                    >
-                      {hasPendingAttempt ? 'Pending Approval' : 
-                       canAttempt ? 'Attempt Dungeon' : 
-                       `Requires Level ${dungeon.min_level}`}
+                    > 
+                      {hasPendingAttempt ? 'Pending Approval' :
+                       !isUnlocked ? `🔒 Locked` :
+                       !hasEnoughStamina ? `Not enough stamina` :
+                       'Attempt Dungeon'}
                     </Button>
                   </div>
                 );
@@ -240,15 +282,25 @@ export default function TeamDashboard() {
                 inventory.map((item) => (
                   <div key={item.id} className="border rounded-lg p-3">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className={`font-semibold ${getRarityColor(item.rarity)}`}>
+                      <div className="flex-1 space-y-1">
+                        <h4 className={`font-semibold ${item.item_type === 'skill' ? getRarityColor(item.rarity) : 'text-primary'}`}>
                           {item.item_name}
                         </h4>
                         <p className="text-sm text-muted-foreground capitalize">
-                          {item.item_type.replace('_', ' ')} • {item.rarity}
+                          {item.item_type === 'skill'
+                            ? `${item.rarity} ${item.item_type.replace('_', ' ')}`
+                            : item.item_type.replace('_', ' ')}
                         </p>
-                        {item.description && (
-                          <p className="text-sm mt-1">{item.description}</p>
+                        {item.stats && typeof item.stats === 'object' && (
+                          <div className="text-xs mt-2 space-y-1 bg-muted/50 p-2 rounded-md">
+                            {Object.entries(item.stats).map(([key, value]) => (
+                              value && (
+                                <p key={key}>
+                                  <span className="font-semibold capitalize">{key.replace(/_/g, ' ')}:</span> {String(value)}
+                                </p>
+                              )
+                            ))}
+                          </div>
                         )}
                       </div>
                       <Badge variant="outline">
@@ -277,7 +329,7 @@ export default function TeamDashboard() {
                 {attempts.slice(0, 5).map((attempt) => (
                   <div key={attempt.id} className="flex justify-between items-center border rounded-lg p-3">
                     <div>
-                      <p className="font-medium">{attempt.dungeons.name}</p>
+                      <p className="font-medium">{attempt.dungeons?.name || 'Unknown Dungeon'}</p>
                       <p className="text-sm text-muted-foreground">
                         {new Date(attempt.attempted_at).toLocaleString()}
                       </p>

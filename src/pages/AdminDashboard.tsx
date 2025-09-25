@@ -27,13 +27,19 @@ interface PendingAttempt {
 }
 
 // Game data for drop generation
-const skillsByClass = {
-  warrior: ['Shield Bash', 'Berserker Rage', 'Taunt', 'Cleave', 'Iron Will'],
-  mage: ['Fireball', 'Ice Shard', 'Lightning Bolt', 'Teleport', 'Mana Shield'],
-  archer: ['Multi-Shot', 'Piercing Arrow', 'Eagle Eye', 'Trap', 'Wind Arrow'],
-  assassin: ['Stealth', 'Poison Blade', 'Shadow Strike', 'Smoke Bomb', 'Critical Hit'],
-  paladin: ['Heal', 'Divine Protection', 'Smite', 'Blessing', 'Holy Light'],
-  berserker: ['Rage', 'Blood Lust', 'Intimidate', 'Whirlwind', 'Fury']
+const skills = {
+  'Shield': { rare: 'Increases DEF by 20', epic: 'Increases DEF by 30', legendary: 'Increases DEF by 50' },
+  'Berserk': { rare: 'Increases ATK by 20, reduces DEF by 10', epic: 'Increases ATK by 35, reduces DEF by 15', legendary: 'Increases ATK by 60, reduces DEF by 20' },
+  'Seppuku': { rare: 'Sacrifice 200 HP for a 40 ATK boost', epic: 'Sacrifice 300 HP for a 70 ATK boost', legendary: 'Sacrifice 400 HP for a 90 ATK boost' },
+  'Fireball': { rare: 'Deals 150 fixed damage to all enemies', epic: 'Deals 200 fixed damage to all enemies', legendary: 'Deals 200 fixed damage to all enemies' },
+  'Lightning': { rare: 'Deals 150 fixed damage (+50 to melee)', epic: 'Deals 200 fixed damage (+50 to melee)', legendary: 'Deals 250 fixed damage (+50 to melee)' },
+  'Counter Rune': { rare: '25% chance to stop the next attack', epic: '35% chance to stop the next attack', legendary: '50% chance to stop the next attack' },
+  'Riposte': { rare: 'Cuts next attack by 50% and counters with 100 ATK', epic: 'Cuts next attack by 60% and counters with 125 ATK', legendary: 'Cuts next attack by 70% and counters with 150 ATK' },
+  'Life Steal': { rare: 'Gain 50% of damage dealt as HP', epic: 'Gain 75% of damage dealt as HP', legendary: 'Gain 100% of damage dealt as HP' },
+  'Freeze': { rare: 'Freezes an enemy in ice with 100 HP', epic: 'Freezes an enemy in ice with 200 HP', legendary: 'Freezes an enemy in ice with 300 HP' },
+  'Confusion': { rare: '50% chance to make the target attack its own team', epic: '75% chance to make the target attack its own team', legendary: '90% chance to make the target attack its own team and become controllable' },
+  'Dodge': { rare: '50% chance for attacks to miss for 2 turns', epic: '75% chance for attacks to miss for 2 turns', legendary: '100% chance for attacks to miss for 2 turns' },
+  'Last Resort': { rare: 'Next attack deals extra damage based on 30% of missing HP', epic: 'Next attack deals extra damage based on 50% of missing HP', legendary: 'Next attack deals extra damage based on 80% of missing HP' },
 };
 
 const artifactSets = {
@@ -60,11 +66,9 @@ const artifactSets = {
 };
 
 const rarities = [
-  { name: 'common', weight: 50 },
-  { name: 'uncommon', weight: 30 },
-  { name: 'rare', weight: 15 },
-  { name: 'epic', weight: 4 },
-  { name: 'legendary', weight: 1 }
+  { name: 'rare', weight: 60 },
+  { name: 'epic', weight: 30 },
+  { name: 'legendary', weight: 10 }
 ];
 
 const getRandomRarity = () => {
@@ -80,15 +84,11 @@ const getRandomRarity = () => {
 
 const generateRandomDrop = (players: Player[], dungeonRank: string, itemType: 'skill' | 'artifact' | 'set_piece') => {
   let itemName = '';
-
-  // Pick a random player from the team to determine class-specific drops
-  const randomPlayer = players[Math.floor(Math.random() * players.length)];
-  const characterClass = randomPlayer.character_class;
   
   switch (itemType) {
     case 'skill':
-      const classSkills = skillsByClass[characterClass as keyof typeof skillsByClass] || skillsByClass.warrior;
-      itemName = classSkills[Math.floor(Math.random() * classSkills.length)];
+      const skillNames = Object.keys(skills);
+      itemName = skillNames[Math.floor(Math.random() * skillNames.length)];
       break;
     case 'artifact':
     case 'set_piece':
@@ -97,29 +97,33 @@ const generateRandomDrop = (players: Player[], dungeonRank: string, itemType: 's
       break;
   }
 
-  const rarity = getRandomRarity();
-  
+  const rarity = itemType === 'skill' ? getRandomRarity() : 'common'; // Artifacts don't have rarity
+  const description = `An item obtained from dungeon exploration.`;
+
   // Better drops for higher rank dungeons
   const rankModifier = { 'E': 0, 'D': 0.1, 'C': 0.2, 'B': 0.3, 'A': 0.5, 'S': 0.8 }[dungeonRank] || 0;
   const baseStats = Math.floor(Math.random() * 10) + 1;
   const bonusStats = Math.floor(baseStats * rankModifier);
 
-  let itemStats: any = {
-    power: baseStats + bonusStats,
-    bonus: rankModifier > 0 ? `+${Math.floor(rankModifier * 100)}% from ${dungeonRank} rank dungeon` : null
-  };
+  let itemStats: any = {};
 
-  if (itemType === 'artifact' || itemType === 'set_piece') {
+  if (itemType === 'skill') {
+    const skillData = skills[itemName as keyof typeof skills];
+    itemStats.effect = skillData[rarity as keyof typeof skillData];
+  } else if (itemType === 'artifact' || itemType === 'set_piece') {
     const setBonuses = artifactSets[itemName as keyof typeof artifactSets];
-    itemStats['2-set bonus'] = setBonuses['2-set'];
-    itemStats['4-set bonus'] = setBonuses['4-set'];
+    itemStats = {
+      '2-set bonus': setBonuses['2-set'],
+      '4-set bonus': setBonuses['4-set'],
+      description: `An item from the ${itemName}.`
+    };
   }
 
   return {
     item_type: itemType as any,
     item_name: itemName,
     rarity: rarity as any,
-    description: `A ${rarity} ${itemType.replace('_', ' ')} obtained from dungeon exploration`,
+    description: description,
     stats: itemStats
   };
 };

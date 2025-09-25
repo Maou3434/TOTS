@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-
 export default function Auth() {
   const { session, signInWithTeam, signUpTeam, signInAsAdmin } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
