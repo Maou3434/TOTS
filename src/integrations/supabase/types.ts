@@ -14,7 +14,177 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dungeon_attempts: {
+        Row: {
+          attempted_at: string
+          dungeon_id: string
+          id: string
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          status: Database["public"]["Enums"]["attempt_status"]
+          team_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          dungeon_id: string
+          id?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["attempt_status"]
+          team_id: string
+        }
+        Update: {
+          attempted_at?: string
+          dungeon_id?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["attempt_status"]
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dungeon_attempts_dungeon_id_fkey"
+            columns: ["dungeon_id"]
+            isOneToOne: false
+            referencedRelation: "dungeons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dungeon_attempts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dungeons: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          min_level: number
+          name: string
+          rank: Database["public"]["Enums"]["dungeon_rank"]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_level?: number
+          name: string
+          rank: Database["public"]["Enums"]["dungeon_rank"]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_level?: number
+          name?: string
+          rank?: Database["public"]["Enums"]["dungeon_rank"]
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          description: string | null
+          id: string
+          item_name: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          obtained_at: string
+          obtained_from: string | null
+          rarity: Database["public"]["Enums"]["item_rarity"]
+          stats: Json | null
+          team_id: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          item_name: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          obtained_at?: string
+          obtained_from?: string | null
+          rarity: Database["public"]["Enums"]["item_rarity"]
+          stats?: Json | null
+          team_id: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          item_name?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          obtained_at?: string
+          obtained_from?: string | null
+          rarity?: Database["public"]["Enums"]["item_rarity"]
+          stats?: Json | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_obtained_from_fkey"
+            columns: ["obtained_from"]
+            isOneToOne: false
+            referencedRelation: "dungeon_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          attack: number
+          character_class: Database["public"]["Enums"]["character_class"]
+          created_at: string
+          defense: number
+          experience: number
+          health: number
+          id: string
+          level: number
+          mana: number
+          password_hash: string
+          speed: number
+          team_name: string
+          updated_at: string
+        }
+        Insert: {
+          attack?: number
+          character_class: Database["public"]["Enums"]["character_class"]
+          created_at?: string
+          defense?: number
+          experience?: number
+          health?: number
+          id?: string
+          level?: number
+          mana?: number
+          password_hash: string
+          speed?: number
+          team_name: string
+          updated_at?: string
+        }
+        Update: {
+          attack?: number
+          character_class?: Database["public"]["Enums"]["character_class"]
+          created_at?: string
+          defense?: number
+          experience?: number
+          health?: number
+          id?: string
+          level?: number
+          mana?: number
+          password_hash?: string
+          speed?: number
+          team_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +193,17 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      attempt_status: "pending" | "approved" | "rejected"
+      character_class:
+        | "warrior"
+        | "mage"
+        | "archer"
+        | "assassin"
+        | "paladin"
+        | "berserker"
+      dungeon_rank: "E" | "D" | "C" | "B" | "A" | "S"
+      item_rarity: "common" | "uncommon" | "rare" | "epic" | "legendary"
+      item_type: "skill" | "artifact" | "set_piece"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +330,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      attempt_status: ["pending", "approved", "rejected"],
+      character_class: [
+        "warrior",
+        "mage",
+        "archer",
+        "assassin",
+        "paladin",
+        "berserker",
+      ],
+      dungeon_rank: ["E", "D", "C", "B", "A", "S"],
+      item_rarity: ["common", "uncommon", "rare", "epic", "legendary"],
+      item_type: ["skill", "artifact", "set_piece"],
+    },
   },
 } as const

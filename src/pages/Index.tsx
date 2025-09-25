@@ -1,11 +1,113 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Sword, Shield, Zap, Crown, Users, Trophy } from 'lucide-react';
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            🏰 Dungeon Crawler Event Platform
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Form your team, choose your class, and conquer legendary dungeons to earn epic rewards. 
+            Your adventure awaits in the depths below!
+          </p>
+          <Link to="/auth">
+            <Button size="lg" className="text-lg px-8 py-4">
+              <Sword className="mr-2 h-5 w-5" />
+              Begin Your Adventure
+            </Button>
+          </Link>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <Card className="border-border/50 hover:border-primary/50 transition-colors">
+            <CardHeader className="text-center">
+              <Users className="h-12 w-12 mx-auto mb-4 text-primary" />
+              <CardTitle>Form Your Team</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center">
+                Register your team and choose from 6 unique character classes, each with distinct abilities and playstyles.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 hover:border-primary/50 transition-colors">
+            <CardHeader className="text-center">
+              <Shield className="h-12 w-12 mx-auto mb-4 text-primary" />
+              <CardTitle>Conquer Dungeons</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center">
+                Challenge dungeons ranked from E to S difficulty. Each victory brings you closer to legendary status.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 hover:border-primary/50 transition-colors">
+            <CardHeader className="text-center">
+              <Trophy className="h-12 w-12 mx-auto mb-4 text-primary" />
+              <CardTitle>Earn Epic Loot</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-center">
+                Receive rare skills, artifacts, and set pieces. Build your legendary collection and grow in power.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Classes Preview */}
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Choose Your Destiny</CardTitle>
+            <p className="text-muted-foreground">Six unique classes await your command</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="text-center space-y-2">
+                <Sword className="h-8 w-8 mx-auto text-warrior" />
+                <h3 className="font-semibold">Warrior</h3>
+                <p className="text-sm text-muted-foreground">Balanced fighter with high defense</p>
+              </div>
+              <div className="text-center space-y-2">
+                <Zap className="h-8 w-8 mx-auto text-mage" />
+                <h3 className="font-semibold">Mage</h3>
+                <p className="text-sm text-muted-foreground">Powerful spells and magical damage</p>
+              </div>
+              <div className="text-center space-y-2">
+                <Shield className="h-8 w-8 mx-auto text-archer" />
+                <h3 className="font-semibold">Archer</h3>
+                <p className="text-sm text-muted-foreground">Swift ranged attacks and precision</p>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="h-8 w-8 mx-auto bg-assassin rounded-full flex items-center justify-center">
+                  <span className="text-xs font-bold text-white">A</span>
+                </div>
+                <h3 className="font-semibold">Assassin</h3>
+                <p className="text-sm text-muted-foreground">Stealth and critical strikes</p>
+              </div>
+              <div className="text-center space-y-2">
+                <Crown className="h-8 w-8 mx-auto text-paladin" />
+                <h3 className="font-semibold">Paladin</h3>
+                <p className="text-sm text-muted-foreground">Holy magic and divine protection</p>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="h-8 w-8 mx-auto bg-berserker rounded-full flex items-center justify-center">
+                  <span className="text-xs font-bold text-white">⚡</span>
+                </div>
+                <h3 className="font-semibold">Berserker</h3>
+                <p className="text-sm text-muted-foreground">Raw power and devastating attacks</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -57,6 +57,26 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Game-specific colors
+        warrior: "hsl(var(--warrior))",
+        mage: "hsl(var(--mage))",
+        archer: "hsl(var(--archer))",
+        assassin: "hsl(var(--assassin))",
+        paladin: "hsl(var(--paladin))",
+        berserker: "hsl(var(--berserker))",
+        // Rarity colors
+        common: "hsl(var(--common))",
+        uncommon: "hsl(var(--uncommon))",
+        rare: "hsl(var(--rare))",
+        epic: "hsl(var(--epic))",
+        legendary: "hsl(var(--legendary))",
+        // Dungeon rank colors
+        "rank-e": "hsl(var(--rank-e))",
+        "rank-d": "hsl(var(--rank-d))",
+        "rank-c": "hsl(var(--rank-c))",
+        "rank-b": "hsl(var(--rank-b))",
+        "rank-a": "hsl(var(--rank-a))",
+        "rank-s": "hsl(var(--rank-s))",
       },
       borderRadius: {
         lg: "var(--radius)",
