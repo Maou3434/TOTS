@@ -132,7 +132,7 @@ export default function Auth() {
       <Card className="w-full max-w-md border-border/50 shadow-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-primary">
-            🏰 Dungeon Crawler
+            🏰 Trials Of The Shadow Sovereign
           </CardTitle>
           <p className="text-muted-foreground">Choose your adventure</p>
         </CardHeader>

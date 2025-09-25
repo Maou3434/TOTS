@@ -10,7 +10,7 @@ const Index = () => {
       <div className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
           <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            🏰 Dungeon Crawler Event Platform
+            🏰 Trials Of The Shadow Sovereign
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Form your team, choose your class, and conquer legendary dungeons to earn epic rewards. 
