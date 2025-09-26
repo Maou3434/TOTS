@@ -50,7 +50,7 @@ const artifactSets = {
   },
   "Angel in White Set": {
     "2-set": "Gains HP +250",
-    "4-set": "Reduces own ATK by 10%, increases allies' ATK by 10%"
+    "4-set": "Reduces own ATK by 10%, increases allies' ATK by 15%"
   },
   "Golden Gladiator Set": {
     "2-set": "Gains DEF +30",

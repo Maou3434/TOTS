@@ -64,10 +64,86 @@ const staminaCosts: Record<string, number> = {
 
 const artifactSets = {
   "Lion's Set": { "2-set": "Gains ATK +50", "4-set": "Ignores 20% of enemy defense" },
-  "Angel in White Set": { "2-set": "Gains HP +250", "4-set": "Reduces own ATK by 10%, increases allies' ATK by 10%" },
+  "Angel in White Set": { "2-set": "Gains HP +250", "4-set": "Reduces own ATK by 10%, increases allies' ATK by 15%" },
   "Golden Gladiator Set": { "2-set": "Gains DEF +30", "4-set": "Reduces own HP by 200, increases allies' DEF by 20" },
   "Destroyer Set": { "2-set": "Power gauge rate increases by 10%", "4-set": "Starts battle with 30% power gauge" },
   "Red Panther Set": { "2-set": "Gains ATK +15 and DEF +15", "4-set": "Reduces own HP by 200, gains an additional ATK +15 and DEF +15" }
+};
+
+const calculateModifiedStats = (player: PlayerWithEquipment, activeBonuses: { bonus: string }[]) => {
+  const modifications: { health: number; attack: number; defense: number; mana: number } = { health: 0, attack: 0, defense: 0, mana: 0 };
+
+  for (const { bonus } of activeBonuses) {
+    const selfEffects = bonus.split(',').filter(s => !s.includes('allies'));
+
+    for (const effect of selfEffects) {
+      // Regex for: (Action) (Stat) (Operator) (Value)(%)
+      // e.g., "Gains ATK +50", "Reduces own HP by 200", "Reduces own ATK by 10%"
+      const matches = effect.matchAll(/(Gains|Increases|Reduces)\s*(?:own\s)?(HP|ATK|DEF)\s*(?:by\s|\+)?(-?\d+)(%?)/gi);
+
+      for (const match of matches) {
+        const action = match[1].toLowerCase();
+        const stat = match[2].toLowerCase();
+        let value = parseInt(match[3], 10);
+        const isPercent = match[4] === '%';
+
+        if (action === 'reduces') {
+          value = -Math.abs(value);
+        }
+
+        let modificationAmount = 0;
+        if (isPercent) {
+          let baseStat = 0;
+          if (stat === 'hp') baseStat = player.health;
+          if (stat === 'atk') baseStat = player.attack;
+          if (stat === 'def') baseStat = player.defense;
+          modificationAmount = Math.ceil(baseStat * (value / 100));
+        } else {
+          modificationAmount = value;
+        }
+
+        if (stat === 'hp') modifications.health += modificationAmount;
+        if (stat === 'atk') modifications.attack += modificationAmount;
+        if (stat === 'def') modifications.defense += modificationAmount;
+      }
+    }
+  }
+
+  return {
+    health: player.health + modifications.health,
+    attack: player.attack + modifications.attack,
+    defense: player.defense + modifications.defense,
+    mana: player.mana + modifications.mana, // Mana is not affected yet, but included for structure
+    modifications,
+  };
+};
+
+const calculateAllyBuffs = (player: PlayerWithEquipment, activeBonuses: { bonus: string }[]) => {
+  const modifications: { health: number; attack: number; defense: number } = { health: 0, attack: 0, defense: 0 };
+
+  for (const { bonus } of activeBonuses) {
+    const allyEffects = bonus.split(',').filter(s => s.includes('allies'));
+
+    for (const effect of allyEffects) {
+      // Regex for: (Action) allies' (Stat) by/+ (Value)(%)
+      // e.g., "increases allies' ATK by 10%", "increases allies' DEF by 20"
+      const matches = effect.matchAll(/(increases)\s*allies'\s*(HP|ATK|DEF)\s*(?:by\s|\+)?(\d+)(%?)/gi);
+
+      for (const match of matches) {
+        const stat = match[2].toLowerCase();
+        const value = parseInt(match[3], 10);
+        const isPercent = match[4] === '%';
+
+        // We'll store the value and type, and apply it to each ally later
+        // For now, we just parse it. The logic here is simplified because we can't know the ally's base stat yet.
+        // We will pass the raw bonus string and parse it for each ally.
+        // This is a placeholder for a more complex implementation.
+        // Let's adjust the main loop to handle this.
+      }
+    }
+  }
+  // This function is a bit tricky. Let's refactor the main component loop instead.
+  return modifications;
 };
 
 const getActiveSetBonuses = (player: PlayerWithEquipment, inventory: InventoryItem[]) => {
@@ -398,7 +474,57 @@ export default function TeamDashboard() {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4">
               {team.players.map(player => {
-                const activeBonuses = getActiveSetBonuses(player, inventory);
+                // 1. Calculate self-modifications from own sets
+                const ownActiveBonuses = getActiveSetBonuses(player, inventory);
+                const { modifications: selfModifications } = calculateModifiedStats(player, ownActiveBonuses);
+
+                // 2. Calculate modifications from allies' buffs
+                const allyModifications = { health: 0, attack: 0, defense: 0 };
+                team.players.forEach(otherPlayer => {
+                  if (otherPlayer.id === player.id) return; // Don't get buffs from self
+
+                  const otherPlayerBonuses = getActiveSetBonuses(otherPlayer, inventory);
+                  for (const { bonus } of otherPlayerBonuses) {
+                    const allyEffects = bonus.split(',').filter(s => s.includes('allies'));
+                    for (const effect of allyEffects) {
+                      const matches = effect.matchAll(/(increases)\s*allies'\s*(HP|ATK|DEF)\s*(?:by\s|\+)?(\d+)(%?)/gi);
+                      for (const match of matches) {
+                        const stat = match[2].toLowerCase();
+                        const value = parseInt(match[3], 10);
+                        const isPercent = match[4] === '%';
+
+                        let modificationAmount = 0;
+                        if (isPercent) {
+                          let baseStat = 0;
+                          if (stat === 'hp') baseStat = player.health; // The 'player' is the ally receiving the buff
+                          if (stat === 'atk') baseStat = player.attack; // The 'player' is the ally receiving the buff
+                          if (stat === 'def') baseStat = player.defense; // The 'player' is the ally receiving the buff
+                          modificationAmount = Math.ceil(baseStat * (value / 100));
+                        } else {
+                          modificationAmount = value;
+                        }
+
+                        if (stat === 'hp') allyModifications.health += modificationAmount;
+                        if (stat === 'atk') allyModifications.attack += modificationAmount;
+                        if (stat === 'def') allyModifications.defense += modificationAmount;
+                      }
+                    }
+                  }
+                });
+
+                // 3. Combine all modifications
+                const totalModifications = {
+                  health: selfModifications.health + allyModifications.health,
+                  attack: selfModifications.attack + allyModifications.attack,
+                  defense: selfModifications.defense + allyModifications.defense,
+                };
+
+                const finalStats = {
+                  health: player.health + totalModifications.health,
+                  attack: player.attack + totalModifications.attack,
+                  defense: player.defense + totalModifications.defense,
+                };
+
                 return (
                 <Card key={player.id} className="p-4 flex flex-col">
                   <CardHeader className="p-0 mb-2">
@@ -406,21 +532,21 @@ export default function TeamDashboard() {
                     <p className="text-sm text-muted-foreground capitalize">{player.character_class}</p>
                   </CardHeader>
                   <CardContent className="p-0 text-sm space-y-1 flex-grow">
-                    <p><Heart className="inline h-4 w-4 mr-1 text-red-500" />{player.health} HP</p>
-                    <p><Zap className="inline h-4 w-4 mr-1 text-blue-500" />{player.mana} MP</p>
-                    <p><Sword className="inline h-4 w-4 mr-1 text-gray-600" />{player.attack} ATK</p>
-                    <p><Shield className="inline h-4 w-4 mr-1 text-gray-400" />{player.defense} DEF</p>
+                    <p><Heart className="inline h-4 w-4 mr-1 text-red-500" /> HP: {finalStats.health} {totalModifications.health !== 0 && <span className={totalModifications.health > 0 ? "text-green-400" : "text-red-400"}>({totalModifications.health > 0 ? '+' : ''}{totalModifications.health})</span>}</p>
+                    <p><Zap className="inline h-4 w-4 mr-1 text-blue-500" /> MP: {player.mana}</p>
+                    <p><Sword className="inline h-4 w-4 mr-1 text-gray-600" /> ATK: {finalStats.attack} {totalModifications.attack !== 0 && <span className={totalModifications.attack > 0 ? "text-green-400" : "text-red-400"}>({totalModifications.attack > 0 ? '+' : ''}{totalModifications.attack})</span>}</p>
+                    <p><Shield className="inline h-4 w-4 mr-1 text-gray-400" /> DEF: {finalStats.defense} {totalModifications.defense !== 0 && <span className={totalModifications.defense > 0 ? "text-green-400" : "text-red-400"}>({totalModifications.defense > 0 ? '+' : ''}{totalModifications.defense})</span>}</p>
                   </CardContent>
                   <div className="mt-4">
                     <Button variant="secondary" className="w-full" onClick={() => openEquipDrawer(player)}>
                       Equip
                     </Button>
                   </div>
-                  {activeBonuses.length > 0 && (
+                  {ownActiveBonuses.length > 0 && (
                     <div className="mt-4 pt-2 border-t">
                       <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Active Set Bonuses</h4>
                       <div className="space-y-1">
-                        {activeBonuses.map(b => (
+                        {ownActiveBonuses.map(b => (
                           <p key={b.bonus} className="text-xs text-green-400">
                             <span className="font-bold">({b.count}) {b.setName}:</span> {b.bonus}
                           </p>
