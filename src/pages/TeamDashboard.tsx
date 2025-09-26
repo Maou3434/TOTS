@@ -23,6 +23,7 @@ interface DungeonAttempt {
   id: string;
   dungeon_id: string;
   status: string;
+  attempted_at: string;
   dungeons: { name: string, rank: string };
 }
 
