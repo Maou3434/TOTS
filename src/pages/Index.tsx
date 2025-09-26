@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sword, Shield, Zap, Crown, Users, Trophy, BookOpen } from 'lucide-react';
+import { Sword, Shield, Zap, Users, Trophy, BookOpen, Heart, UserX, Crosshair } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -90,16 +90,12 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">A stalwart defender, absorbing damage for the team.</p>
               </div>
               <div className="text-center space-y-2">
-                <div className="h-8 w-8 mx-auto bg-healer rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">H</span>
-                </div>
+                <Heart className="h-8 w-8 mx-auto text-healer" />
                 <h3 className="font-semibold">Healer</h3>
                 <p className="text-sm text-muted-foreground">A supportive class that can heal and buff allies.</p>
               </div>
               <div className="text-center space-y-2">
-                <div className="h-8 w-8 mx-auto bg-assassin rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">A</span>
-                </div>
+                <UserX className="h-8 w-8 mx-auto text-assassin" />
                 <h3 className="font-semibold">Assassin</h3>
                 <p className="text-sm text-muted-foreground">A swift and deadly class that strikes from the shadows.</p>
               </div>
@@ -109,9 +105,7 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">A powerful spellcaster with devastating area-of-effect attacks.</p>
               </div>
               <div className="text-center space-y-2">
-                <div className="h-8 w-8 mx-auto bg-ranger rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">R</span>
-                </div>
+                <Crosshair className="h-8 w-8 mx-auto text-ranger" />
                 <h3 className="font-semibold">Ranger</h3>
                 <p className="text-sm text-muted-foreground">A master of ranged combat, picking off enemies from a distance.</p>
               </div>

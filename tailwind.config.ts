@@ -58,12 +58,12 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         // Game-specific colors
-        warrior: "hsl(var(--warrior))",
-        mage: "hsl(var(--mage))",
-        archer: "hsl(var(--archer))",
+        fighter: "hsl(var(--fighter))",
+        tank: "hsl(var(--tank))",
+        healer: "hsl(var(--healer))",
         assassin: "hsl(var(--assassin))",
-        paladin: "hsl(var(--paladin))",
-        berserker: "hsl(var(--berserker))",
+        mage: "hsl(var(--mage))",
+        ranger: "hsl(var(--ranger))",
         // Rarity colors
         common: "hsl(var(--common))",
         uncommon: "hsl(var(--uncommon))",
