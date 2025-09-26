@@ -86,50 +86,6 @@ export type Database = {
         }
         Relationships: []
       }
-      players: {
-        Row: {
-          id: string
-          team_id: string
-          name: string
-          character_class: Database["public"]["Enums"]["character_class"]
-          health: number
-          mana: number
-          attack: number
-          defense: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          team_id: string
-          name: string
-          character_class: Database["public"]["Enums"]["character_class"]
-          health?: number
-          mana?: number
-          attack?: number
-          defense?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          team_id?: string
-          name?: string
-          character_class?: Database["public"]["Enums"]["character_class"]
-          health?: number
-          mana?: number
-          attack?: number
-          defense?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [{
-          foreignKeyName: "players_team_id_fkey"
-          columns: ["team_id"]
-          referencedRelation: "teams"
-          referencedColumns: ["id"]
-        }]
-      }
       inventory: {
         Row: {
           description: string | null
@@ -181,6 +137,86 @@ export type Database = {
           },
         ]
       }
+      merge_requests: {
+        Row: {
+          id: string
+          requested_at: string
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          skill1_id: string
+          skill2_id: string
+          status: Database["public"]["Enums"]["attempt_status"]
+          team_id: string
+        }
+        Insert: {
+          id?: string
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          skill1_id: string
+          skill2_id: string
+          status?: Database["public"]["Enums"]["attempt_status"]
+          team_id: string
+        }
+        Update: {
+          id?: string
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          skill1_id?: string
+          skill2_id?: string
+          status?: Database["public"]["Enums"]["attempt_status"]
+          team_id?: string
+        }
+        Relationships: []
+      }
+      players: {
+        Row: {
+          attack: number
+          character_class: string
+          created_at: string
+          defense: number
+          health: number
+          id: string
+          mana: number
+          name: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          attack?: number
+          character_class: string
+          created_at?: string
+          defense?: number
+          health?: number
+          id?: string
+          mana?: number
+          name: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          attack?: number
+          character_class?: string
+          created_at?: string
+          defense?: number
+          health?: number
+          id?: string
+          mana?: number
+          name?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           created_at: string
@@ -213,10 +249,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      update_updated_at_column: {
-        Args: Record<string, unknown>
-        Returns: unknown
-      }
+      [_ in never]: never
     }
     Enums: {
       attempt_status: "pending" | "approved" | "rejected"

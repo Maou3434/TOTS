@@ -63,6 +63,7 @@ export default function TeamDashboard() {
   const [dungeons, setDungeons] = useState<Dungeon[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [attempts, setAttempts] = useState<DungeonAttempt[]>([]);
+  const [mergeRequests, setMergeRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (team) {
@@ -92,9 +93,17 @@ export default function TeamDashboard() {
         .eq('team_id', currentTeam.id)
         .order('attempted_at', { ascending: false });
 
+      // Fetch merge requests
+      const { data: mergeData } = await supabase
+        .from('merge_requests')
+        .select('*')
+        .eq('team_id', currentTeam.id)
+        .order('requested_at', { ascending: false });
+
       setDungeons(dungeonsData || []);
       setInventory(inventoryData || []);
       setAttempts(attemptsData || []);
+      setMergeRequests(mergeData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -151,6 +160,52 @@ export default function TeamDashboard() {
         variant: "destructive"
       });
     }
+  };
+
+  const requestMerge = async (skill1Id: string, skill2Id: string) => {
+    try {
+      const { error } = await supabase
+        .from('merge_requests')
+        .insert({
+          team_id: team!.id,
+          skill1_id: skill1Id,
+          skill2_id: skill2Id
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Merge request submitted!",
+        description: "Your merge request is pending admin approval"
+      });
+
+      fetchData(team!);
+    } catch (error) {
+      toast({
+        title: "Failed to submit merge request",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getMergeableSkills = () => {
+    const skills = inventory.filter(item => item.item_type === 'skill');
+    const skillGroups: Record<string, InventoryItem[]> = {};
+    
+    skills.forEach(skill => {
+      const key = `${skill.item_name}-${skill.rarity}`;
+      if (!skillGroups[key]) skillGroups[key] = [];
+      skillGroups[key].push(skill);
+    });
+
+    return Object.entries(skillGroups).filter(([_, skills]) => skills.length >= 2);
+  };
+
+  const getNextRarity = (currentRarity: string) => {
+    const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const currentIndex = rarityOrder.indexOf(currentRarity);
+    return currentIndex < rarityOrder.length - 1 ? rarityOrder[currentIndex + 1] : 'legendary';
   };
 
   if (authLoading) {
@@ -329,6 +384,81 @@ export default function TeamDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Skill Merge Requests */}
+        {getMergeableSkills().length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5" />
+                Skill Merging
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {getMergeableSkills().map(([skillKey, skills]) => {
+                const [skillName, rarity] = skillKey.split('-');
+                const nextRarity = getNextRarity(rarity);
+                const hasPendingRequest = mergeRequests.some(
+                  req => req.status === 'pending' && 
+                  [req.skill1_id, req.skill2_id].every(id => skills.some(s => s.id === id))
+                );
+                
+                return (
+                  <div key={skillKey} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-semibold">{skillName}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Merge 2 <span className={getRarityColor(rarity)}>{rarity}</span> → 1 <span className={getRarityColor(nextRarity)}>{nextRarity}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Available: {skills.length} skills
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => requestMerge(skills[0].id, skills[1].id)}
+                      disabled={hasPendingRequest || skills.length < 2}
+                      className="w-full"
+                      variant={hasPendingRequest ? "secondary" : "default"}
+                    >
+                      {hasPendingRequest ? 'Merge Request Pending' : 'Request Merge'}
+                    </Button>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Merge Request Status */}
+        {mergeRequests.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Merge Request History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {mergeRequests.slice(0, 5).map((request) => (
+                  <div key={request.id} className="flex justify-between items-center border rounded-lg p-3">
+                    <div>
+                      <p className="font-medium">Skill Merge Request</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(request.requested_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <Badge variant={
+                      request.status === 'approved' ? 'default' :
+                      request.status === 'rejected' ? 'destructive' : 'secondary'
+                    }>
+                      {request.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Attempts */}
         <Card>
