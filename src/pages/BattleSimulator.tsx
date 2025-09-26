@@ -286,14 +286,14 @@ export default function BattleCalculator() {
             setDamageCalculation(null);
             return;
         }
-        const finalAttacker = team1WithBattleStats.players.find(p => p.id === attackerId);
+        const finalAttacker = team1WithBattleStats.players.find(p => p.id === attackerId) || team2WithBattleStats.players.find(p => p.id === attackerId);
         const finalDefender = team1WithBattleStats.players.find(p => p.id === defenderId) || team2WithBattleStats.players.find(p => p.id === defenderId);
 
         // Find original players to show base stats
         const originalTeam1 = teams.find(t => t.id === team1Id);
         const originalTeam2 = teams.find(t => t.id === team2Id);
-        const baseAttacker = originalTeam1?.players.find(p => p.id === attackerId);
-        const baseDefender = originalTeam2?.players.find(p => p.id === defenderId);
+        const baseAttacker = originalTeam1?.players.find(p => p.id === attackerId) || originalTeam2?.players.find(p => p.id === attackerId);
+        const baseDefender = originalTeam1?.players.find(p => p.id === defenderId) || originalTeam2?.players.find(p => p.id === defenderId);
 
         if (!finalAttacker || !finalDefender || !baseAttacker || !baseDefender) {
             setDamageCalculation(null);
