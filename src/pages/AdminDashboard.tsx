@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, CheckCircle, XCircle, Clock, Crown, BookOpen } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
+import { LogOut, CheckCircle, XCircle, Clock, Crown, BookOpen, Swords } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type Player = Database['public']['Tables']['players']['Row'];
@@ -375,6 +375,12 @@ export default function AdminDashboard() {
               <Link to="/game-data">
                 <BookOpen className="h-4 w-4 mr-2" />
                 Game Guide
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/admin/battle-simulator">
+                <Swords className="h-4 w-4 mr-2" />
+                Battle Calculator
               </Link>
             </Button>
             <Button variant="outline" onClick={signOut}>

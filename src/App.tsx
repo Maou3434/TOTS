@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import AddMembers from "./pages/AddMembers";
 import NotFound from "./pages/NotFound";
 import GameData from "./pages/GameData";
+import BattleCalculator from "./pages/BattleSimulator";
 
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/add-members/:teamId" element={<AddMembers />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/game-data" element={<GameData />} />
+            <Route path="/admin/battle-simulator" element={<ProtectedRoute><BattleCalculator /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
