@@ -214,6 +214,61 @@ export type Database = {
         }
         Relationships: []
       }
+      merge_requests: {
+        Row: {
+          id: string
+          team_id: string
+          skill1_id: string
+          skill2_id: string
+          status: Database["public"]["Enums"]["attempt_status"]
+          requested_at: string
+          reviewed_at: string | null
+          reviewer_notes: string | null
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          skill1_id: string
+          skill2_id: string
+          status?: Database["public"]["Enums"]["attempt_status"]
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          skill1_id?: string
+          skill2_id?: string
+          status?: Database["public"]["Enums"]["attempt_status"]
+          requested_at?: string
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merge_requests_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merge_requests_skill1_id_fkey"
+            columns: ["skill1_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merge_requests_skill2_id_fkey"
+            columns: ["skill2_id"]
+            isOneToOne: false
+            referencedRelation: "inventory"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

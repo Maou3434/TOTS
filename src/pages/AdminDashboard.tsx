@@ -298,12 +298,19 @@ export default function AdminDashboard() {
         const newRarity = currentIndex < rarityOrder.length - 1 ? rarityOrder[currentIndex + 1] : 'legendary' as const;
 
         // Remove the two old skills
-        const { error: deleteError } = await supabase
+        const { data: deletedData, error: deleteError } = await supabase
           .from('inventory')
           .delete()
-          .in('id', [mergeRequest.skill1_id, mergeRequest.skill2_id]);
+          .in('id', [mergeRequest.skill1_id, mergeRequest.skill2_id])
+          .select(); // Add this to return the deleted rows
 
         if (deleteError) throw deleteError;
+
+        if (!deletedData || deletedData.length !== 2) {
+          throw new Error('Failed to delete the old skills. Please check RLS policies.');
+        }
+
+        console.log('Successfully deleted old skills:', deletedData);
 
         // Add the new merged skill
         const { error: insertError } = await supabase
@@ -315,7 +322,7 @@ export default function AdminDashboard() {
             rarity: newRarity,
             description: `Merged ${newRarity} ${skill.item_name}`,
             stats: skill.stats,
-            obtained_from: mergeId
+            obtained_from: null
           });
 
         if (insertError) throw insertError;
@@ -329,9 +336,10 @@ export default function AdminDashboard() {
       // Refresh the list
       fetchMergeRequests();
     } catch (error) {
+      console.error("Error processing merge:", error);
       toast({
         title: "Error processing merge",
-        description: "Please try again",
+        description: (error as Error).message || "Please try again",
         variant: "destructive"
       });
     } finally {

@@ -11,6 +11,7 @@ import AddMembers from "./pages/AddMembers";
 import NotFound from "./pages/NotFound";
 import GameData from "./pages/GameData";
 
+
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
