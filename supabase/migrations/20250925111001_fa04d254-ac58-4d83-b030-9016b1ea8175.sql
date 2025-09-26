@@ -10,7 +10,7 @@ CREATE TABLE public.teams (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   team_name TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  stamina INTEGER NOT NULL DEFAULT 20,
+  stamina INTEGER NOT NULL DEFAULT 100,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );

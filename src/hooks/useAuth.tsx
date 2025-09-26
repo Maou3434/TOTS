@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const hoursPassed = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60));
     
     let newStamina = teamData.stamina;
-    if (hoursPassed > 0 && teamData.stamina < 20) {
-      newStamina = Math.min(20, teamData.stamina + hoursPassed);
+    if (hoursPassed > 0 && teamData.stamina < 100) {
+      newStamina = Math.min(100, teamData.stamina + 5 * hoursPassed);
       // Update stamina in the database
       const { error } = await supabase
         .from('teams')

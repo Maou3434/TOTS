@@ -48,12 +48,12 @@ const getRankColor = (rank: string) => {
 };
 
 const staminaCosts: Record<string, number> = {
-  E: 0,
-  D: 1,
-  C: 2,
-  B: 3,
-  A: 4,
-  S: 5,
+  E: 0,   // 0 * 5
+  D: 5,   // 1 * 5
+  C: 10,  // 2 * 5
+  B: 15,  // 3 * 5
+  A: 20,  // 4 * 5
+  S: 25,  // 5 * 5
 };
 
 export default function TeamDashboard() {
@@ -64,12 +64,11 @@ export default function TeamDashboard() {
 
   useEffect(() => {
     if (team) {
-      fetchData();
+      fetchData(team);
     }
   }, [team]);
 
-  const fetchData = async () => {
-    if (!team) return;
+  const fetchData = async (currentTeam: typeof team) => {
     try {
       // Fetch dungeons
       const { data: dungeonsData } = await supabase
@@ -81,14 +80,14 @@ export default function TeamDashboard() {
       const { data: inventoryData } = await supabase
         .from('inventory')
         .select('*', { count: 'exact' })
-        .eq('team_id', team.id)
+        .eq('team_id', currentTeam.id)
         .order('obtained_at', { ascending: false });
 
       // Fetch attempts
       const { data: attemptsData } = await supabase
         .from('dungeon_attempts')
         .select('*, dungeons(name, rank)')
-        .eq('team_id', team.id)
+        .eq('team_id', currentTeam.id)
         .order('attempted_at', { ascending: false });
 
       setDungeons(dungeonsData || []);
@@ -96,8 +95,6 @@ export default function TeamDashboard() {
       setAttempts(attemptsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -114,11 +111,19 @@ export default function TeamDashboard() {
 
       // Deduct stamina
       const newStamina = team!.stamina - cost;
-      const { error: staminaError } = await supabase.from('teams').update({ stamina: newStamina }).eq('id', team!.id);
+      const { data: updatedTeam, error: staminaError } = await supabase
+        .from('teams')
+        .update({ stamina: newStamina })
+        .eq('id', team!.id)
+        .select('*, players(*)')
+        .single();
+
       if (staminaError) throw staminaError;
 
       // Update local team state for immediate UI feedback
-      setTeam({ ...team!, stamina: newStamina });
+      // By fetching the team data, we ensure all info is up-to-date from the DB
+      const newTeamState = { ...updatedTeam, players: updatedTeam.players || [] };
+      if (updatedTeam) setTeam(newTeamState);
 
       const { error: attemptError } = await supabase
         .from('dungeon_attempts')
@@ -135,7 +140,8 @@ export default function TeamDashboard() {
         description: "Your request is pending admin approval"
       });
 
-      fetchData(); // Refresh data
+      // Re-fetch all dashboard data with the new team state
+      if (updatedTeam) await fetchData(newTeamState);
     } catch (error) {
       toast({
         title: "Failed to attempt dungeon",
