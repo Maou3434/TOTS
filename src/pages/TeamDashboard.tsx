@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, Sword, Shield, Zap, Heart, Star, Package, Users, BookOpen } from 'lucide-react';
+import { LogOut, Sword, Shield, Zap, Heart, Star, Package, Users, BookOpen, X, PlusCircle } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
 import { Link } from 'react-router-dom';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from '@/components/ui/drawer';
 
 interface Dungeon {
   id: string;
@@ -18,7 +19,10 @@ interface Dungeon {
 }
 
 type InventoryItem = Database['public']['Tables']['inventory']['Row'];
-type Player = Database['public']['Tables']['players']['Row'];
+type PlayerWithEquipment = Database['public']['Tables']['players']['Row'] & {
+  equipped_skill_item?: InventoryItem;
+  equipped_artifact_items?: InventoryItem[];
+};
 
 interface DungeonAttempt {
   id: string;
@@ -64,6 +68,8 @@ export default function TeamDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [attempts, setAttempts] = useState<DungeonAttempt[]>([]);
   const [mergeRequests, setMergeRequests] = useState<any[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerWithEquipment | null>(null);
+  const [isEquipDrawerOpen, setIsEquipDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (team) {
@@ -162,6 +168,86 @@ export default function TeamDashboard() {
     }
   };
 
+  const refreshTeamData = async () => {
+    if (!team) return;
+    try {
+      const { data: freshTeam, error } = await supabase
+        .from('teams')
+        .select('*, players(*)')
+        .eq('id', team.id)
+        .single();
+      if (error) throw error;
+      if (freshTeam) {
+        setTeam({ ...freshTeam, players: freshTeam.players || [] });
+        await fetchData({ ...freshTeam, players: freshTeam.players || [] });
+      }
+    } catch (error) {
+      console.error("Failed to refresh team data", error);
+      toast({ title: "Could not refresh team data", variant: "destructive" });
+    }
+  };
+
+  const handleEquipItem = async (player: PlayerWithEquipment, item: InventoryItem) => {
+    try {
+      // Final check to ensure the item isn't already equipped by another player
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('equipped_skill, equipped_artifacts')
+        .eq('team_id', team!.id);
+
+      if (playersError) throw playersError;
+
+      const isAlreadyEquipped = allPlayers.some(p => p.equipped_skill === item.id || p.equipped_artifacts?.includes(item.id));
+      if (isAlreadyEquipped) {
+        toast({ title: "Item Already Equipped", description: "This item is already in use by another team member.", variant: "destructive" });
+        await refreshTeamData(); // Refresh to show the correct state
+        return;
+      }
+      let updateData: Partial<PlayerWithEquipment> = {};
+      if (item.item_type === 'skill') {
+        if (player.equipped_skill) {
+          toast({ title: "Skill slot is full", description: "Unequip the current skill first.", variant: "destructive" });
+          return;
+        }
+        updateData.equipped_skill = item.id;
+      } else if (item.item_type === 'artifact' || item.item_type === 'set_piece') {
+        const artifacts = player.equipped_artifacts || [];
+        if (artifacts.length >= 4) {
+          toast({ title: "Artifact limit reached", description: "You can only equip 4 artifacts per player.", variant: "destructive" });
+          return;
+        }
+        updateData.equipped_artifacts = [...artifacts, item.id];
+      }
+
+      const { error } = await supabase.from('players').update(updateData).eq('id', player.id);
+      if (error) throw error;
+
+      toast({ title: "Item equipped!", description: `${item.item_name} has been equipped to ${player.name}.` });
+      await refreshTeamData();
+    } catch (error) {
+      toast({ title: "Failed to equip item", variant: "destructive" });
+    }
+  };
+
+  const handleUnequipItem = async (player: PlayerWithEquipment, item: InventoryItem) => {
+    try {
+      let updateData: Partial<PlayerWithEquipment> = {};
+      if (item.item_type === 'skill') {
+        updateData.equipped_skill = null;
+      } else if (item.item_type === 'artifact' || item.item_type === 'set_piece') {
+        const artifacts = player.equipped_artifacts || [];
+        updateData.equipped_artifacts = artifacts.filter(id => id !== item.id);
+      }
+
+      const { error } = await supabase.from('players').update(updateData).eq('id', player.id);
+      if (error) throw error;
+
+      toast({ title: "Item unequipped!", description: `${item.item_name} has been unequipped from ${player.name}.` });
+      await refreshTeamData();
+    } catch (error) {
+      toast({ title: "Failed to unequip item", variant: "destructive" });
+    }
+  };
   const requestMerge = async (skill1Id: string, skill2Id: string) => {
     try {
       const { error } = await supabase
@@ -207,6 +293,27 @@ export default function TeamDashboard() {
     const currentIndex = rarityOrder.indexOf(currentRarity);
     return currentIndex < rarityOrder.length - 1 ? rarityOrder[currentIndex + 1] : 'legendary';
   };
+
+  useEffect(() => {
+    if (isEquipDrawerOpen && selectedPlayer) {
+      const freshPlayer = team?.players.find(p => p.id === selectedPlayer.id);
+      if (freshPlayer) openEquipDrawer(freshPlayer);
+    }
+  }, [team, isEquipDrawerOpen]);
+
+  const openEquipDrawer = (player: PlayerWithEquipment) => {
+    const equippedSkillItem = inventory.find(item => item.id === player.equipped_skill);
+    const equippedArtifactItems = (player.equipped_artifacts || []).map(id => inventory.find(item => item.id === id)).filter(Boolean) as InventoryItem[];
+    setSelectedPlayer({ ...player, equipped_skill_item: equippedSkillItem, equipped_artifact_items: equippedArtifactItems });
+    setIsEquipDrawerOpen(true);
+  };
+
+  const allEquippedItemIds = team?.players.reduce((acc, player) => {
+    if (player.equipped_skill) acc.add(player.equipped_skill);
+    (player.equipped_artifacts || []).forEach(id => acc.add(id));
+    return acc;
+  }, new Set<string>()) || new Set();
+  const availableInventory = inventory.filter(item => !allEquippedItemIds.has(item.id));
 
   if (authLoading) {
     return (
@@ -262,11 +369,16 @@ export default function TeamDashboard() {
                     <p className="text-sm text-muted-foreground capitalize">{player.character_class}</p>
                   </CardHeader>
                   <CardContent className="p-0 text-sm space-y-1">
-                    <p><Heart className="inline h-4 w-4 mr-2 text-red-500" />{player.health} HP</p>
-                    <p><Zap className="inline h-4 w-4 mr-2 text-blue-500" />{player.mana} MP</p>
-                    <p><Sword className="inline h-4 w-4 mr-2 text-gray-600" />{player.attack} ATK</p>
-                    <p><Shield className="inline h-4 w-4 mr-2 text-gray-400" />{player.defense} DEF</p>
+                    <p><Heart className="inline h-4 w-4 mr-1 text-red-500" />{player.health} HP</p>
+                    <p><Zap className="inline h-4 w-4 mr-1 text-blue-500" />{player.mana} MP</p>
+                    <p><Sword className="inline h-4 w-4 mr-1 text-gray-600" />{player.attack} ATK</p>
+                    <p><Shield className="inline h-4 w-4 mr-1 text-gray-400" />{player.defense} DEF</p>
                   </CardContent>
+                  <div className="mt-4">
+                    <Button variant="secondary" className="w-full" onClick={() => openEquipDrawer(player)}>
+                      Equip
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -492,6 +604,89 @@ export default function TeamDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Equipment Drawer */}
+        <Drawer open={isEquipDrawerOpen} onOpenChange={setIsEquipDrawerOpen}>
+          <DrawerContent>
+            {selectedPlayer && (
+              <div className="mx-auto w-full max-w-2xl">
+                <DrawerHeader>
+                  <DrawerTitle>Equip {selectedPlayer.name}</DrawerTitle>
+                  <DrawerDescription>Equip 1 skill and up to 4 artifacts.</DrawerDescription>
+                </DrawerHeader>
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Equipped Items */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-center">Equipped</h4>
+                    {/* Skill Slot */}
+                    <Card>
+                      <CardHeader className="p-2">
+                        <CardTitle className="text-sm font-medium">Skill</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-2">
+                        {selectedPlayer.equipped_skill_item ? (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className={getRarityColor(selectedPlayer.equipped_skill_item.rarity)}>{selectedPlayer.equipped_skill_item.item_name}</span>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUnequipItem(selectedPlayer, selectedPlayer.equipped_skill_item!)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : <p className="text-sm text-muted-foreground">Empty</p>}
+                      </CardContent>
+                    </Card>
+                    {/* Artifact Slots */}
+                    <Card>
+                      <CardHeader className="p-2">
+                        <CardTitle className="text-sm font-medium">Artifacts ({selectedPlayer.equipped_artifact_items?.length || 0}/4)</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-2 space-y-2">
+                        {[...Array(4)].map((_, i) => {
+                          const item = selectedPlayer.equipped_artifact_items?.[i];
+                          return (
+                            <div key={i} className="flex items-center justify-between text-sm border-b pb-1">
+                              {item ? (
+                                <>
+                                  <span>{item.item_name}</span>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUnequipItem(selectedPlayer, item)}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              ) : <p className="text-sm text-muted-foreground">Empty Slot</p>}
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  </div>
+                  {/* Available Inventory */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-center">Available Inventory</h4>
+                    <div className="max-h-80 overflow-y-auto space-y-2 pr-2">
+                      {availableInventory.length > 0 ? availableInventory.map(item => (
+                        <div key={item.id} className="flex items-center justify-between text-sm border rounded-md p-2">
+                          <div>
+                            <p className={`font-medium ${getRarityColor(item.rarity)}`}>{item.item_name}</p>
+                            <p className="text-xs text-muted-foreground capitalize">{item.item_type.replace('_', ' ')} - {item.rarity}</p>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => handleEquipItem(selectedPlayer, item)}>
+                            <PlusCircle className="h-4 w-4 mr-2" /> Equip
+                          </Button>
+                        </div>
+                      )) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No available items to equip.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <DrawerFooter>
+                  <Button variant="outline" onClick={() => setIsEquipDrawerOpen(false)}>
+                    Done
+                  </Button>
+                </DrawerFooter>
+              </div>
+            )}
+          </DrawerContent>
+        </Drawer>
       </div>
     </div>
   );

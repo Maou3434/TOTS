@@ -27,7 +27,8 @@ CREATE TABLE public.players (
   mana INTEGER NOT NULL DEFAULT 50,
   attack INTEGER NOT NULL DEFAULT 10,
   defense INTEGER NOT NULL DEFAULT 5,
-  speed INTEGER NOT NULL DEFAULT 10,
+  equipped_skill UUID REFERENCES public.inventory(id) ON DELETE SET NULL,
+  equipped_artifacts UUID[] DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
