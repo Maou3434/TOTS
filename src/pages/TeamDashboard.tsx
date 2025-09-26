@@ -70,6 +70,17 @@ const artifactSets = {
   "Red Panther Set": { "2-set": "Gains ATK +15 and DEF +15", "4-set": "Reduces own HP by 200, gains an additional ATK +15 and DEF +15" }
 };
 
+const skillData: Record<string, { target?: string }> = {
+  "Fireball (Common)": { target: "Area" },
+  "Fireball (Uncommon)": { target: "Area" },
+  "Fireball (Rare)": { target: "Single" },
+  "Fireball (Epic)": { target: "Single" },
+  "Fireball (Legendary)": { target: "Area" },
+  "Heal (Rare)": { target: "Single Ally" },
+  "Mass Heal (Epic)": { target: "All Allies" },
+  "Protect (Uncommon)": { target: "Single Ally" },
+};
+
 const calculateModifiedStats = (player: PlayerWithEquipment, activeBonuses: { bonus: string }[]) => {
   const modifications: { health: number; attack: number; defense: number; mana: number } = { health: 0, attack: 0, defense: 0, mana: 0 };
 
@@ -638,6 +649,7 @@ export default function TeamDashboard() {
                 </p>
               ) : (
                 inventory.map((item) => (
+                  
                   <div key={item.id} className="border rounded-lg p-3">
                     <div className="flex justify-between items-start">
                       <div className="flex-1 space-y-1">
@@ -649,6 +661,11 @@ export default function TeamDashboard() {
                             ? `${item.rarity} ${item.item_type.replace('_', ' ')}`
                             : item.item_type.replace('_', ' ')}
                         </p>
+                        {item.item_type === 'skill' && skillData[`${item.item_name} (${item.rarity})`]?.target && (
+                          <p className="text-xs text-muted-foreground">
+                            Target: <span className="font-medium text-foreground">{skillData[`${item.item_name} (${item.rarity})`]?.target}</span>
+                          </p>
+                        )}
                         {item.stats && typeof item.stats === 'object' && (
                           <div className="text-xs mt-2 space-y-1 bg-muted/50 p-2 rounded-md">
                             {Object.entries(item.stats).map(([key, value]) => (
