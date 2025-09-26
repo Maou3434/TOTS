@@ -57,8 +57,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdmin(true);
           setSession(savedSession);
         } else if (savedTeam) {
-          const updatedTeam = await calculateAndApplyStamina(savedTeam);
-          setTeam(updatedTeam);
+          // Fetch current team data from database instead of using cached data
+          const { data: currentTeam, error } = await supabase
+            .from('teams')
+            .select('*, players(*)')
+            .eq('id', savedTeam.id)
+            .single();
+          
+          if (currentTeam && !error) {
+            const updatedTeam = await calculateAndApplyStamina({ ...currentTeam, players: currentTeam.players || [] });
+            setTeam(updatedTeam);
+          } else {
+            // Fallback to cached data if database fetch fails
+            const updatedTeam = await calculateAndApplyStamina(savedTeam);
+            setTeam(updatedTeam);
+          }
           setSession(savedSession);
         }
         setLoading(false);
