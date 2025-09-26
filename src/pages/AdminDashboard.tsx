@@ -131,11 +131,13 @@ const generateRandomDrop = (players: Player[], dungeonRank: string, itemType: 's
 export default function AdminDashboard() {
   const { signOut } = useAuth();
   const [pendingAttempts, setPendingAttempts] = useState<PendingAttempt[]>([]);
+  const [mergeRequests, setMergeRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPendingAttempts();
+    fetchMergeRequests();
   }, []);
 
   const fetchPendingAttempts = async () => {
@@ -156,6 +158,24 @@ export default function AdminDashboard() {
       console.error('Error fetching pending attempts:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMergeRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('merge_requests')
+        .select(`
+          *,
+          teams(team_name)
+        `)
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false });
+
+      if (error) throw error;
+      setMergeRequests(data || []);
+    } catch (error) {
+      console.error('Error fetching merge requests:', error);
     }
   };
 
@@ -210,6 +230,82 @@ export default function AdminDashboard() {
     } catch (error) {
       toast({
         title: "Error processing attempt",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleMergeApproval = async (mergeId: string, approved: boolean, notes?: string) => {
+    setProcessingId(mergeId);
+    
+    try {
+      const mergeRequest = mergeRequests.find(m => m.id === mergeId);
+      if (!mergeRequest) throw new Error('Merge request not found');
+
+      // Update the merge request status
+      const { error: updateError } = await supabase
+        .from('merge_requests')
+        .update({
+          status: approved ? 'approved' : 'rejected',
+          reviewed_at: new Date().toISOString(),
+          reviewer_notes: notes
+        })
+        .eq('id', mergeId);
+
+      if (updateError) throw updateError;
+
+      if (approved) {
+        // Get the two skills being merged
+        const { data: skills, error: skillsError } = await supabase
+          .from('inventory')
+          .select('*')
+          .in('id', [mergeRequest.skill1_id, mergeRequest.skill2_id]);
+
+        if (skillsError) throw skillsError;
+        if (!skills || skills.length !== 2) throw new Error('Skills not found');
+
+        const skill = skills[0];
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
+        const currentIndex = rarityOrder.indexOf(skill.rarity as any);
+        const newRarity = currentIndex < rarityOrder.length - 1 ? rarityOrder[currentIndex + 1] : 'legendary' as const;
+
+        // Remove the two old skills
+        const { error: deleteError } = await supabase
+          .from('inventory')
+          .delete()
+          .in('id', [mergeRequest.skill1_id, mergeRequest.skill2_id]);
+
+        if (deleteError) throw deleteError;
+
+        // Add the new merged skill
+        const { error: insertError } = await supabase
+          .from('inventory')
+          .insert({
+            team_id: mergeRequest.team_id,
+            item_name: skill.item_name,
+            item_type: 'skill',
+            rarity: newRarity,
+            description: `Merged ${newRarity} ${skill.item_name}`,
+            stats: skill.stats,
+            obtained_from: mergeId
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: approved ? "Merge approved!" : "Merge rejected",
+        description: approved ? "The skills have been merged successfully." : "The merge request has been rejected"
+      });
+
+      // Refresh the list
+      fetchMergeRequests();
+    } catch (error) {
+      toast({
+        title: "Error processing merge",
         description: "Please try again",
         variant: "destructive"
       });
@@ -325,6 +421,63 @@ export default function AdminDashboard() {
                       <Button
                         onClick={() => handleApproval(attempt.id, false)}
                         disabled={processingId === attempt.id}
+                        variant="destructive"
+                        className="flex-1"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pending Merge Requests */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Skill Merge Requests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {mergeRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No pending merge requests to review</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {mergeRequests.map((mergeRequest) => (
+                  <div key={mergeRequest.id} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <div>
+                          <h3 className="font-semibold text-lg">{mergeRequest.teams?.team_name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Skill Merge Request
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Requested: {new Date(mergeRequest.requested_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleMergeApproval(mergeRequest.id, true)}
+                        disabled={processingId === mergeRequest.id}
+                        className="flex-1"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {processingId === mergeRequest.id ? 'Processing...' : 'Approve Merge'}
+                      </Button>
+                      <Button
+                        onClick={() => handleMergeApproval(mergeRequest.id, false)}
+                        disabled={processingId === mergeRequest.id}
                         variant="destructive"
                         className="flex-1"
                       >
