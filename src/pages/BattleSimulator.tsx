@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Heart, Sword, Shield, Zap } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 
 type Player = Database['public']['Tables']['players']['Row'];
 type InventoryItem = Database['public']['Tables']['inventory']['Row'];
+type PlayerWithCurrentStats = Player & { currentHealth: number; currentMana: number };
 type TeamWithPlayers = Database['public']['Tables']['teams']['Row'] & {
   players: Player[];
 };
@@ -120,28 +122,62 @@ const calculateFinalStats = (player: Player, teamPlayers: Player[], inventory: I
 
 const PlayerCard = ({
     player,
+    onStatsChange,
     isSelected,
     selectionColor,
     onClick
 }: {
-    player: Player;
+    player: PlayerWithCurrentStats;
+    onStatsChange: (playerId: string, newHealth: number, newMana: number) => void;
     isSelected?: boolean;
     selectionColor?: 'blue' | 'red';
     onClick?: () => void;
-}) => (
-    <Card className={`p-4 transition-all cursor-pointer ${isSelected ? `ring-2 ${selectionColor === 'blue' ? 'ring-blue-500' : 'ring-red-500'}` : 'hover:bg-accent'}`} onClick={onClick}>
-        <CardHeader className="p-0 mb-2">
-            <CardTitle className="text-lg">{player.name}</CardTitle>
-            <p className="text-sm text-muted-foreground capitalize">{player.character_class}</p>
-        </CardHeader>
-        <CardContent className="p-0 text-sm space-y-1">
-            <p><Heart className="inline h-4 w-4 mr-1 text-red-500" /> HP: {player.health.toLocaleString()}</p>
-            <p><Zap className="inline h-4 w-4 mr-1 text-blue-500" /> MP: {player.mana.toLocaleString()}</p>
-            <p><Sword className="inline h-4 w-4 mr-1 text-gray-600" /> ATK: {player.attack.toLocaleString()}</p>
-            <p><Shield className="inline h-4 w-4 mr-1 text-gray-400" /> DEF: {player.defense.toLocaleString()}</p>
-        </CardContent>
-    </Card>
-);
+}) => {
+    const handleHealthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newHealth = Math.max(0, Math.min(player.health, parseInt(e.target.value, 10) || 0));
+        onStatsChange(player.id, newHealth, player.currentMana);
+    };
+
+    const handleManaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newMana = Math.max(0, Math.min(player.mana, parseInt(e.target.value, 10) || 0));
+        onStatsChange(player.id, player.currentHealth, newMana);
+    };
+
+    return (
+        <Card className={`p-4 transition-all ${isSelected ? `ring-2 ${selectionColor === 'blue' ? 'ring-blue-500' : 'ring-red-500'}` : ''}`}>
+            <div className="cursor-pointer" onClick={onClick}>
+                <CardHeader className="p-0 mb-2">
+                    <CardTitle className="text-lg">{player.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground capitalize">{player.character_class}</p>
+                </CardHeader>
+                <CardContent className="p-0 text-sm space-y-2">
+                    <p><Sword className="inline h-4 w-4 mr-1 text-gray-600" /> ATK: {player.attack.toLocaleString()}</p>
+                    <p><Shield className="inline h-4 w-4 mr-1 text-gray-400" /> DEF: {player.defense.toLocaleString()}</p>
+                </CardContent>
+            </div>
+            <div className="mt-3 space-y-3">
+                {/* Health Bar */}
+                <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                        <label htmlFor={`hp-${player.id}`} className="flex items-center"><Heart className="inline h-4 w-4 mr-1 text-red-500" /> HP</label>
+                        <span>{player.currentHealth.toLocaleString()} / {player.health.toLocaleString()}</span>
+                    </div>
+                    <Progress value={(player.currentHealth / player.health) * 100} className="h-2 [&>*]:bg-red-500" />
+                    <Input type="number" id={`hp-${player.id}`} value={player.currentHealth} onChange={handleHealthChange} className="h-8 mt-1" onClick={e => e.stopPropagation()} />
+                </div>
+                {/* Mana Bar */}
+                <div className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                        <label htmlFor={`mp-${player.id}`} className="flex items-center"><Zap className="inline h-4 w-4 mr-1 text-blue-500" /> MP</label>
+                        <span>{player.currentMana.toLocaleString()} / {player.mana.toLocaleString()}</span>
+                    </div>
+                    <Progress value={(player.currentMana / player.mana) * 100} className="h-2" />
+                    <Input type="number" id={`mp-${player.id}`} value={player.currentMana} onChange={handleManaChange} className="h-8 mt-1" onClick={e => e.stopPropagation()} />
+                </div>
+            </div>
+        </Card>
+    );
+};
 
 export default function BattleCalculator() {
     const [teams, setTeams] = useState<TeamWithPlayers[]>([]);
@@ -151,6 +187,8 @@ export default function BattleCalculator() {
     const [attackerId, setAttackerId] = useState<string | null>(null);
     const [defenderId, setDefenderId] = useState<string | null>(null);
     const [damageCalculation, setDamageCalculation] = useState<{ log: string[], finalDamage: number } | null>(null);
+    const [team1WithBattleStats, setTeam1WithBattleStats] = useState<TeamWithPlayers & { players: PlayerWithCurrentStats[] } | null>(null);
+    const [team2WithBattleStats, setTeam2WithBattleStats] = useState<TeamWithPlayers & { players: PlayerWithCurrentStats[] } | null>(null);
 
 
     useEffect(() => {
@@ -174,6 +212,8 @@ export default function BattleCalculator() {
         // Reset selections if teams change
         setAttackerId(null);
         setDefenderId(null);
+        setTeam1WithBattleStats(null);
+        setTeam2WithBattleStats(null);
     }, [team1Id, team2Id]);
 
     const getTeamWithFinalStats = (teamId: string | null) => {
@@ -185,17 +225,45 @@ export default function BattleCalculator() {
         return { ...team, players: playersWithFinalStats };
     };
 
-    const team1 = useMemo(() => getTeamWithFinalStats(team1Id), [team1Id, teams, inventory]);
-    const team2 = useMemo(() => getTeamWithFinalStats(team2Id), [team2Id, teams, inventory]);
+    const team1WithFinalStats = useMemo(() => getTeamWithFinalStats(team1Id), [team1Id, teams, inventory]);
+    const team2WithFinalStats = useMemo(() => getTeamWithFinalStats(team2Id), [team2Id, teams, inventory]);
 
     useEffect(() => {
-        if (!attackerId || !defenderId || !team1 || !team2) {
+        if (team1WithFinalStats) {
+            setTeam1WithBattleStats({
+                ...team1WithFinalStats,
+                players: team1WithFinalStats.players.map(p => ({ ...p, currentHealth: p.health, currentMana: p.mana }))
+            });
+        }
+        if (team2WithFinalStats) {
+            setTeam2WithBattleStats({
+                ...team2WithFinalStats,
+                players: team2WithFinalStats.players.map(p => ({ ...p, currentHealth: p.health, currentMana: p.mana }))
+            });
+        }
+    }, [team1WithFinalStats, team2WithFinalStats]);
+
+    const handlePlayerStatsChange = (teamNumber: 1 | 2, playerId: string, newHealth: number, newMana: number) => {
+        const teamSetter = teamNumber === 1 ? setTeam1WithBattleStats : setTeam2WithBattleStats;
+        teamSetter(prevTeam => {
+            if (!prevTeam) return null;
+            return {
+                ...prevTeam,
+                players: prevTeam.players.map(p =>
+                    p.id === playerId ? { ...p, currentHealth: newHealth, currentMana: newMana } : p
+                )
+            };
+        });
+    };
+
+
+    useEffect(() => {
+        if (!attackerId || !defenderId || !team1WithBattleStats || !team2WithBattleStats) {
             setDamageCalculation(null);
             return;
         }
-
-        const finalAttacker = team1.players.find(p => p.id === attackerId);
-        const finalDefender = team2.players.find(p => p.id === defenderId);
+        const finalAttacker = team1WithBattleStats.players.find(p => p.id === attackerId);
+        const finalDefender = team2WithBattleStats.players.find(p => p.id === defenderId);
         
         // Find original players to show base stats
         const originalTeam1 = teams.find(t => t.id === team1Id);
@@ -234,10 +302,10 @@ export default function BattleCalculator() {
 
         setDamageCalculation({ log, finalDamage });
 
-    }, [attackerId, defenderId, team1, team2, inventory]);
+    }, [attackerId, defenderId, team1WithBattleStats, team2WithBattleStats, teams, inventory, team1Id, team2Id]);
 
 
-    const calculateTeamSummary = (team: TeamWithPlayers | null) => {
+    const calculateTeamSummary = (team: (TeamWithPlayers & { players: PlayerWithCurrentStats[] }) | null) => {
         if (!team || team.players.length === 0) {
             return { totalHealth: 0, totalAttack: 0, totalDefense: 0, avgAttack: 0, avgDefense: 0 };
         }
@@ -249,8 +317,8 @@ export default function BattleCalculator() {
         return { totalHealth, totalAttack, totalDefense, avgAttack, avgDefense };
     }
 
-    const team1Summary = useMemo(() => calculateTeamSummary(team1), [team1]);
-    const team2Summary = useMemo(() => calculateTeamSummary(team2), [team2]);
+    const team1Summary = useMemo(() => calculateTeamSummary(team1WithBattleStats), [team1WithBattleStats]);
+    const team2Summary = useMemo(() => calculateTeamSummary(team2WithBattleStats), [team2WithBattleStats]);
 
     const TeamSummaryCard = ({ teamName, summary }: { teamName: string, summary: ReturnType<typeof calculateTeamSummary> }) => (
         <Card>
@@ -308,10 +376,10 @@ export default function BattleCalculator() {
                 )}
 
                 {/* Summary */}
-                {team1 && team2 && (
+                {team1WithBattleStats && team2WithBattleStats && (
                     <div className="grid md:grid-cols-2 gap-6">
-                        <TeamSummaryCard teamName={team1.team_name} summary={team1Summary} />
-                        <TeamSummaryCard teamName={team2.team_name} summary={team2Summary} />
+                        <TeamSummaryCard teamName={team1WithBattleStats.team_name} summary={team1Summary} />
+                        <TeamSummaryCard teamName={team2WithBattleStats.team_name} summary={team2Summary} />
                     </div>
                 )}
 
@@ -319,28 +387,30 @@ export default function BattleCalculator() {
                 {/* Team Rosters */}
                 <div className="grid md:grid-cols-2 gap-6">
                     <Card>
-                        <CardHeader><CardTitle>{team1?.team_name || "Team 1"}</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>{team1WithBattleStats?.team_name || "Team 1"}</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                            {team1 ? team1.players.map(p => (
+                            {team1WithBattleStats ? team1WithBattleStats.players.map(p => (
                                 <PlayerCard
                                     key={p.id}
                                     player={p}
                                     isSelected={attackerId === p.id}
                                     selectionColor="blue"
-                                    onClick={() => setAttackerId(p.id)} />
+                                    onClick={() => setAttackerId(p.id)}
+                                    onStatsChange={(...args) => handlePlayerStatsChange(1, ...args)} />
                             )) : <p className="text-muted-foreground">Select a team</p>}
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader><CardTitle>{team2?.team_name || "Team 2"}</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>{team2WithBattleStats?.team_name || "Team 2"}</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                            {team2 ? team2.players.map(p => (
+                            {team2WithBattleStats ? team2WithBattleStats.players.map(p => (
                                 <PlayerCard
                                     key={p.id}
                                     player={p}
                                     isSelected={defenderId === p.id}
                                     selectionColor="red"
-                                    onClick={() => setDefenderId(p.id)} />
+                                    onClick={() => setDefenderId(p.id)}
+                                    onStatsChange={(...args) => handlePlayerStatsChange(2, ...args)} />
                             )) : <p className="text-muted-foreground">Select a team</p>}
                         </CardContent>
                     </Card>
