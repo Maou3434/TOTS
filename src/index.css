@@ -44,12 +44,12 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     /* Game-specific colors */
-    --warrior: 0 70% 50%;
-    --mage: 240 70% 65%;
-    --archer: 120 50% 45%;
+    --fighter: 0 70% 50%;
+    --tank: 200 80% 50%;
+    --healer: 120 70% 50%;
     --assassin: 300 50% 40%;
-    --paladin: 50 80% 60%;
-    --berserker: 15 80% 50%;
+    --mage: 240 70% 65%;
+    --ranger: 100 50% 45%;
 
     /* Rarity colors */
     --common: 0 0% 60%;

@@ -16,12 +16,12 @@ interface MemberState {
 }
 
 const baseStatsByClass: Record<string, Omit<Database['public']['Tables']['players']['Insert'], 'id' | 'team_id' | 'name' | 'character_class'>> = {
-  warrior: { health: 120, mana: 30, attack: 12, defense: 8 },
-  mage: { health: 80, mana: 80, attack: 8, defense: 4 },
-  archer: { health: 90, mana: 40, attack: 10, defense: 5 },
-  assassin: { health: 85, mana: 50, attack: 11, defense: 4 },
-  paladin: { health: 110, mana: 60, attack: 10, defense: 7 },
-  berserker: { health: 100, mana: 20, attack: 15, defense: 3 },
+  fighter: { health: 1000, mana: 0, attack: 150, defense: 50 },
+  tank: { health: 1200, mana: 0, attack: 100, defense: 70 },
+  healer: { health: 1500, mana: 0, attack: 100, defense: 50 },
+  assassin: { health: 1000, mana: 0, attack: 125, defense: 60 },
+  mage: { health: 800, mana: 0, attack: 200, defense: 50 },
+  ranger: { health: 1000, mana: 0, attack: 125, defense: 60 },
 };
 
 import { Database } from '@/integrations/supabase/types';

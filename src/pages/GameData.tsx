@@ -32,60 +32,46 @@ const artifactSets = {
 
 // Data from AddMembers.tsx and user request
 const classes = {
-  warrior: {
+  fighter: {
     name: 'Fighter',
-    stats: { health: 120, mana: 30, attack: 12, defense: 8 },
-    passive: 'Gains 10% ATK after landing an attack (Always active)',
-    active: 'Double attack (Once every 3 turns)',
+    stats: { Hp: 1000, Atk: 150, Def: 50 },
+    passive: 'gains 10% atk after landing an attack (Always active)',
+    active: 'double attack (Once every 3 turns)',
     skill: 'Skill (Once per match)',
   },
   tank: {
     name: 'Tank',
-    stats: { health: 150, mana: 20, attack: 8, defense: 15 }, // Example stats, can be adjusted
-    passive: 'Reduces incoming damage by 25% (Always active)',
-    active: 'Taunt (all enemies can only target the tank for 1 turn) (Once every 3 turns)',
+    stats: { Hp: 1200, Atk: 100, Def: 70 },
+    passive: 'reduces incoming damage by 25% (Always active)',
+    active: 'taunt(all enemies can only target the tank for 1 turn) (Once every 3 turns)',
     skill: 'Skill (Once per match)',
   },
   healer: {
     name: 'Healer',
-    stats: { health: 90, mana: 70, attack: 7, defense: 5 }, // Example stats, can be adjusted
-    passive: "All attacks heal teammates instead (healing is same as ATK) (Always active)",
-    active: "Buff (increases teammates' attack by 50) (Once every 3 turns)",
-    skill: 'Skill (Once per match)',
-  },
-  mage: {
-    name: 'Mage',
-    stats: { health: 80, mana: 80, attack: 8, defense: 4 },
-    passive: 'Reduces defence by 25% for 1 turn (Always active)',
-    active: 'Blocks all abilities for one target (Once every 3 turns)',
-    skill: 'Skill (Once per match)',
-  },
-  archer: {
-    name: 'Ranger',
-    stats: { health: 90, mana: 40, attack: 10, defense: 5 },
-    passive: "Poison target for 20 DMG per turn (doesn't stack, 2 turns) (Always active)",
-    active: 'Rain of arrows (hits all enemies, no poison) (Once every 3 turns)',
+    stats: { Hp: 1500, Atk: 100, Def: 50 },
+    passive: 'all attacks heal teammates instead(healing is same as atk) (Always active)',
+    active: 'buff(increases teammates attack by 50) (Once every 3 turns)',
     skill: 'Skill (Once per match)',
   },
   assassin: {
     name: 'Assassin',
-    stats: { health: 85, mana: 50, attack: 11, defense: 4 },
+    stats: { Hp: 1000, Atk: 125, Def: 60 },
     passive: 'Always goes first (Always active)',
     active: 'Camouflage (goes invis and can target backrank) (Once every 3 turns)',
     skill: 'Skill (Once per match)',
   },
-  berserker: {
-    name: 'Berserker',
-    stats: { health: 100, mana: 20, attack: 15, defense: 3 },
-    passive: 'Gains 10% ATK after landing an attack (Always active)', // Example from Fighter
-    active: 'Double attack (Once every 3 turns)', // Example from Fighter
+  mage: {
+    name: 'Mage',
+    stats: { Hp: 800, Atk: 200, Def: 50 },
+    passive: 'reduces defence by 25% for 1 turn (Always active)',
+    active: 'Blocks all abilities for one target (Once every 3 turns)',
     skill: 'Skill (Once per match)',
   },
-  paladin: {
-    name: 'Paladin',
-    stats: { health: 110, mana: 60, attack: 10, defense: 7 },
-    passive: 'Reduces incoming damage by 15% (Always active)', // Example from Tank
-    active: 'Taunt (all enemies can only target the paladin for 1 turn) (Once every 3 turns)', // Example from Tank
+  ranger: {
+    name: 'Ranger',
+    stats: { Hp: 1000, Atk: 125, Def: 60 },
+    passive: "poison target for 20 DMG per turn(doesn't stack, 2 turns) (Always active)",
+    active: 'rain of arrows(hits all enemies, no poison) (Once every 3 turns)',
     skill: 'Skill (Once per match)',
   },
 };

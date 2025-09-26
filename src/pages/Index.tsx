@@ -80,38 +80,40 @@ const Index = () => {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div className="text-center space-y-2">
-                <Sword className="h-8 w-8 mx-auto text-warrior" />
-                <h3 className="font-semibold">Warrior</h3>
-                <p className="text-sm text-muted-foreground">Balanced fighter with high defense</p>
+                <Sword className="h-8 w-8 mx-auto text-fighter" />
+                <h3 className="font-semibold">Fighter</h3>
+                <p className="text-sm text-muted-foreground">A master of combat, dealing high damage.</p>
               </div>
               <div className="text-center space-y-2">
-                <Zap className="h-8 w-8 mx-auto text-mage" />
-                <h3 className="font-semibold">Mage</h3>
-                <p className="text-sm text-muted-foreground">Powerful spells and magical damage</p>
+                <Shield className="h-8 w-8 mx-auto text-tank" />
+                <h3 className="font-semibold">Tank</h3>
+                <p className="text-sm text-muted-foreground">A stalwart defender, absorbing damage for the team.</p>
               </div>
               <div className="text-center space-y-2">
-                <Shield className="h-8 w-8 mx-auto text-archer" />
-                <h3 className="font-semibold">Archer</h3>
-                <p className="text-sm text-muted-foreground">Swift ranged attacks and precision</p>
+                <div className="h-8 w-8 mx-auto bg-healer rounded-full flex items-center justify-center">
+                  <span className="text-xs font-bold text-white">H</span>
+                </div>
+                <h3 className="font-semibold">Healer</h3>
+                <p className="text-sm text-muted-foreground">A supportive class that can heal and buff allies.</p>
               </div>
               <div className="text-center space-y-2">
                 <div className="h-8 w-8 mx-auto bg-assassin rounded-full flex items-center justify-center">
                   <span className="text-xs font-bold text-white">A</span>
                 </div>
                 <h3 className="font-semibold">Assassin</h3>
-                <p className="text-sm text-muted-foreground">Stealth and critical strikes</p>
+                <p className="text-sm text-muted-foreground">A swift and deadly class that strikes from the shadows.</p>
               </div>
               <div className="text-center space-y-2">
-                <Crown className="h-8 w-8 mx-auto text-paladin" />
-                <h3 className="font-semibold">Paladin</h3>
-                <p className="text-sm text-muted-foreground">Holy magic and divine protection</p>
+                <Zap className="h-8 w-8 mx-auto text-mage" />
+                <h3 className="font-semibold">Mage</h3>
+                <p className="text-sm text-muted-foreground">A powerful spellcaster with devastating area-of-effect attacks.</p>
               </div>
               <div className="text-center space-y-2">
-                <div className="h-8 w-8 mx-auto bg-berserker rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">⚡</span>
+                <div className="h-8 w-8 mx-auto bg-ranger rounded-full flex items-center justify-center">
+                  <span className="text-xs font-bold text-white">R</span>
                 </div>
-                <h3 className="font-semibold">Berserker</h3>
-                <p className="text-sm text-muted-foreground">Raw power and devastating attacks</p>
+                <h3 className="font-semibold">Ranger</h3>
+                <p className="text-sm text-muted-foreground">A master of ranged combat, picking off enemies from a distance.</p>
               </div>
             </div>
           </CardContent>

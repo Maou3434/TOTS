@@ -226,13 +226,13 @@ export type Database = {
     }
     Enums: {
       attempt_status: "pending" | "approved" | "rejected"
-      character_class:
-        | "warrior"
-        | "mage"
-        | "archer"
+      character_class: 
+        | "fighter"
+        | "tank"
+        | "healer"
         | "assassin"
-        | "paladin"
-        | "berserker"
+        | "mage"
+        | "ranger"
       dungeon_rank: "E" | "D" | "C" | "B" | "A" | "S"
       item_rarity: "common" | "uncommon" | "rare" | "epic" | "legendary"
       item_type: "skill" | "artifact" | "set_piece"
@@ -365,12 +365,12 @@ export const Constants = {
     Enums: {
       attempt_status: ["pending", "approved", "rejected"],
       character_class: [
-        "warrior",
-        "mage",
-        "archer",
+        "fighter",
+        "tank",
+        "healer",
         "assassin",
-        "paladin",
-        "berserker",
+        "mage",
+        "ranger",
       ],
       dungeon_rank: ["E", "D", "C", "B", "A", "S"],
       item_rarity: ["common", "uncommon", "rare", "epic", "legendary"],
