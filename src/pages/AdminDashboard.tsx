@@ -66,13 +66,37 @@ const artifactSets = {
   }
 };
 
-const rarities = [
-  { name: 'rare', weight: 60 },
-  { name: 'epic', weight: 30 },
-  { name: 'legendary', weight: 10 }
-];
+const rarityByRank: Record<string, { name: string; weight: number }[]> = {
+  'S': [
+    { name: 'legendary', weight: 100 }
+  ],
+  'A': [
+    { name: 'epic', weight: 60 },
+    { name: 'legendary', weight: 40 }
+  ],
+  'B': [
+    { name: 'rare', weight: 30 },
+    { name: 'epic', weight: 60 },
+    { name: 'legendary', weight: 10 }
+  ],
+  'C': [
+    { name: 'rare', weight: 60 },
+    { name: 'epic', weight: 37 },
+    { name: 'legendary', weight: 3 }
+  ],
+  'D': [
+    { name: 'rare', weight: 80 },
+    { name: 'epic', weight: 19 },
+    { name: 'legendary', weight: 1 }
+  ],
+  'E': [
+    { name: 'rare', weight: 90 },
+    { name: 'epic', weight: 10 }
+  ],
+};
 
-const getRandomRarity = () => {
+const getRandomRarity = (dungeonRank: string) => {
+  const rarities = rarityByRank[dungeonRank] || rarityByRank['E']; // Default to E rank if not found
   const totalWeight = rarities.reduce((sum, r) => sum + r.weight, 0);
   let random = Math.random() * totalWeight;
   
@@ -80,7 +104,7 @@ const getRandomRarity = () => {
     random -= rarity.weight;
     if (random <= 0) return rarity.name;
   }
-  return 'common';
+  return rarities[0]?.name || 'common'; // Fallback
 };
 
 const generateRandomDrop = (players: Player[], dungeonRank: string, itemType: 'skill' | 'artifact' | 'set_piece') => {
@@ -98,7 +122,7 @@ const generateRandomDrop = (players: Player[], dungeonRank: string, itemType: 's
       break;
   }
 
-  const rarity = itemType === 'skill' ? getRandomRarity() : 'common'; // Artifacts don't have rarity
+  const rarity = itemType === 'skill' ? getRandomRarity(dungeonRank) : 'common'; // Artifacts don't have rarity
   const description = `An item obtained from dungeon exploration.`;
 
   // Better drops for higher rank dungeons
