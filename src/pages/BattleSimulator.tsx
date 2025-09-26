@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Heart, Sword, Shield, Zap } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 type Player = Database['public']['Tables']['players']['Row'];
 type InventoryItem = Database['public']['Tables']['inventory']['Row'];
@@ -123,14 +124,12 @@ const calculateFinalStats = (player: Player, teamPlayers: Player[], inventory: I
 const PlayerCard = ({
     player,
     onStatsChange,
-    isSelected,
-    selectionColor,
+    selectionRole,
     onClick
 }: {
     player: PlayerWithCurrentStats;
     onStatsChange: (playerId: string, newHealth: number, newMana: number) => void;
-    isSelected?: boolean;
-    selectionColor?: 'blue' | 'red';
+    selectionRole: 'attacker' | 'defender' | null;
     onClick?: () => void;
 }) => {
     const handleHealthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +143,9 @@ const PlayerCard = ({
     };
 
     return (
-        <Card className={`p-4 transition-all ${isSelected ? `ring-2 ${selectionColor === 'blue' ? 'ring-blue-500' : 'ring-red-500'}` : ''}`}>
+        <Card className={`p-4 transition-all ${
+            selectionRole ? `ring-2 ${selectionRole === 'attacker' ? 'ring-blue-500' : 'ring-red-500'}` : ''
+        }`}>
             <div className="cursor-pointer" onClick={onClick}>
                 <CardHeader className="p-0 mb-2">
                     <CardTitle className="text-lg">{player.name}</CardTitle>
@@ -189,6 +190,8 @@ export default function BattleCalculator() {
     const [damageCalculation, setDamageCalculation] = useState<{ log: string[], finalDamage: number } | null>(null);
     const [team1WithBattleStats, setTeam1WithBattleStats] = useState<TeamWithPlayers & { players: PlayerWithCurrentStats[] } | null>(null);
     const [team2WithBattleStats, setTeam2WithBattleStats] = useState<TeamWithPlayers & { players: PlayerWithCurrentStats[] } | null>(null);
+    const [battleLog, setBattleLog] = useState<string[]>([]);
+    const [manualLogEntry, setManualLogEntry] = useState("");
 
 
     useEffect(() => {
@@ -256,6 +259,27 @@ export default function BattleCalculator() {
         });
     };
 
+    const handlePlayerClick = (player: Player) => {
+        if (attackerId === player.id) { // Deselect attacker
+            setAttackerId(null);
+        } else if (defenderId === player.id) { // Deselect defender
+            setDefenderId(null);
+        } else if (!attackerId) { // Select attacker
+            setAttackerId(player.id);
+        } else if (!defenderId) { // Select defender
+            setDefenderId(player.id);
+        } else { // Both are selected, reset and select new attacker
+            setAttackerId(player.id);
+            setDefenderId(null);
+        }
+    };
+
+    const resetSelections = () => {
+        setAttackerId(null);
+        setDefenderId(null);
+        setDamageCalculation(null);
+    };
+
 
     useEffect(() => {
         if (!attackerId || !defenderId || !team1WithBattleStats || !team2WithBattleStats) {
@@ -263,8 +287,8 @@ export default function BattleCalculator() {
             return;
         }
         const finalAttacker = team1WithBattleStats.players.find(p => p.id === attackerId);
-        const finalDefender = team2WithBattleStats.players.find(p => p.id === defenderId);
-        
+        const finalDefender = team1WithBattleStats.players.find(p => p.id === defenderId) || team2WithBattleStats.players.find(p => p.id === defenderId);
+
         // Find original players to show base stats
         const originalTeam1 = teams.find(t => t.id === team1Id);
         const originalTeam2 = teams.find(t => t.id === team2Id);
@@ -303,6 +327,33 @@ export default function BattleCalculator() {
         setDamageCalculation({ log, finalDamage });
 
     }, [attackerId, defenderId, team1WithBattleStats, team2WithBattleStats, teams, inventory, team1Id, team2Id]);
+
+    const handlePerformAttack = () => {
+        if (!damageCalculation || !attackerId || !defenderId || (!team1WithBattleStats && !team2WithBattleStats)) return;
+
+        const attacker = team1WithBattleStats?.players.find(p => p.id === attackerId) || team2WithBattleStats?.players.find(p => p.id === attackerId);
+        const defender = team1WithBattleStats?.players.find(p => p.id === defenderId) || team2WithBattleStats?.players.find(p => p.id === defenderId);
+
+        if (!attacker || !defender) return;
+
+        const newDefenderHealth = Math.max(0, defender.currentHealth - damageCalculation.finalDamage);
+
+        const logMessage = `${attacker.name} attacks ${defender.name} for ${damageCalculation.finalDamage} damage. (${defender.name} HP: ${defender.currentHealth} -> ${newDefenderHealth})`;
+        setBattleLog(prev => [...prev, logMessage]);
+
+        const defenderTeamNumber = team1WithBattleStats?.players.some(p => p.id === defender.id) ? 1 : 2;
+        handlePlayerStatsChange(defenderTeamNumber, defender.id, newDefenderHealth, defender.currentMana);
+
+        // Reset for next action
+        resetSelections();
+    };
+
+    const handleAddManualLog = () => {
+        if (manualLogEntry.trim() === "") return;
+        setBattleLog(prev => [...prev, `(Manual) ${manualLogEntry.trim()}`]);
+        setManualLogEntry("");
+    };
+
 
 
     const calculateTeamSummary = (team: (TeamWithPlayers & { players: PlayerWithCurrentStats[] }) | null) => {
@@ -370,9 +421,16 @@ export default function BattleCalculator() {
                             <div className="font-mono text-xs space-y-1 bg-background p-3 rounded-md">
                                 {damageCalculation.log.map((line, i) => <p key={i}>{line}</p>)}
                             </div>
-                            <p className="text-center text-2xl font-bold">Final Damage: <span className="text-destructive">{damageCalculation.finalDamage.toLocaleString()}</span></p>
+                            <div className="flex items-center justify-center gap-4">
+                                <p className="text-center text-2xl font-bold">Final Damage: <span className="text-destructive">{damageCalculation.finalDamage.toLocaleString()}</span></p>
+                                <Button onClick={handlePerformAttack}>Perform Attack</Button>
+                                <Button variant="outline" onClick={resetSelections}>Reset</Button>
+                            </div>
                         </CardContent>
                     </Card>
+                )}
+                {!damageCalculation && (attackerId || defenderId) && (
+                     <div className="text-center"><Button variant="outline" onClick={resetSelections}>Reset Selection</Button></div>
                 )}
 
                 {/* Summary */}
@@ -383,6 +441,26 @@ export default function BattleCalculator() {
                     </div>
                 )}
 
+                {/* Battle Log */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Battle Log</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="max-h-48 overflow-y-auto bg-background p-3 rounded-md font-mono text-xs space-y-2 mb-4">
+                            {battleLog.length > 0 ? battleLog.map((entry, i) => <p key={i}>{entry}</p>) : <p className="text-muted-foreground">No actions logged yet.</p>}
+                        </div>
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="Enter manual log entry..."
+                                value={manualLogEntry}
+                                onChange={(e) => setManualLogEntry(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddManualLog()}
+                            />
+                            <Button onClick={handleAddManualLog}>Add to Log</Button>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Team Rosters */}
                 <div className="grid md:grid-cols-2 gap-6">
@@ -393,10 +471,9 @@ export default function BattleCalculator() {
                                 <PlayerCard
                                     key={p.id}
                                     player={p}
-                                    isSelected={attackerId === p.id}
-                                    selectionColor="blue"
-                                    onClick={() => setAttackerId(p.id)}
-                                    onStatsChange={(...args) => handlePlayerStatsChange(1, ...args)} />
+                                    selectionRole={attackerId === p.id ? 'attacker' : defenderId === p.id ? 'defender' : null}
+                                    onClick={() => handlePlayerClick(p)}
+                                    onStatsChange={(...args) => handlePlayerStatsChange(1, ...args)} /> 
                             )) : <p className="text-muted-foreground">Select a team</p>}
                         </CardContent>
                     </Card>
@@ -407,10 +484,9 @@ export default function BattleCalculator() {
                                 <PlayerCard
                                     key={p.id}
                                     player={p}
-                                    isSelected={defenderId === p.id}
-                                    selectionColor="red"
-                                    onClick={() => setDefenderId(p.id)}
-                                    onStatsChange={(...args) => handlePlayerStatsChange(2, ...args)} />
+                                    selectionRole={attackerId === p.id ? 'attacker' : defenderId === p.id ? 'defender' : null}
+                                    onClick={() => handlePlayerClick(p)}
+                                    onStatsChange={(...args) => handlePlayerStatsChange(2, ...args)} /> 
                             )) : <p className="text-muted-foreground">Select a team</p>}
                         </CardContent>
                     </Card>
