@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, Team } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { LogOut, Sword, Shield, Zap, Heart, Star, Package, Users, BookOpen, X, PlusCircle } from 'lucide-react';
@@ -62,6 +62,41 @@ const staminaCosts: Record<string, number> = {
   S: 25,  // 5 * 5
 };
 
+const artifactSets = {
+  "Lion's Set": { "2-set": "Gains ATK +50", "4-set": "Ignores 20% of enemy defense" },
+  "Angel in White Set": { "2-set": "Gains HP +250", "4-set": "Reduces own ATK by 10%, increases allies' ATK by 10%" },
+  "Golden Gladiator Set": { "2-set": "Gains DEF +30", "4-set": "Reduces own HP by 200, increases allies' DEF by 20" },
+  "Destroyer Set": { "2-set": "Power gauge rate increases by 10%", "4-set": "Starts battle with 30% power gauge" },
+  "Red Panther Set": { "2-set": "Gains ATK +15 and DEF +15", "4-set": "Reduces own HP by 200, gains an additional ATK +15 and DEF +15" }
+};
+
+const getActiveSetBonuses = (player: PlayerWithEquipment, inventory: InventoryItem[]) => {
+  if (!player.equipped_artifacts || player.equipped_artifacts.length === 0) return [];
+
+  const setCounts: Record<string, number> = {};
+  for (const artifactId of player.equipped_artifacts) {
+    const item = inventory.find(invItem => invItem.id === artifactId);
+    if (item && (item.item_type === 'artifact' || item.item_type === 'set_piece')) {
+      setCounts[item.item_name] = (setCounts[item.item_name] || 0) + 1;
+    }
+  }
+
+  const bonuses: { setName: string, bonus: string, count: 2 | 4 }[] = [];
+  for (const [setName, count] of Object.entries(setCounts)) {
+    const setInfo = artifactSets[setName as keyof typeof artifactSets];
+    if (!setInfo) continue;
+
+    if (count >= 4) {
+      bonuses.push({ setName, bonus: setInfo['4-set'], count: 4 });
+    }
+    if (count >= 2) {
+      bonuses.push({ setName, bonus: setInfo['2-set'], count: 2 });
+    }
+  }
+
+  return bonuses;
+};
+
 export default function TeamDashboard() {
   const { team, signOut, loading: authLoading, setTeam } = useAuth();
   const [dungeons, setDungeons] = useState<Dungeon[]>([]);
@@ -115,7 +150,7 @@ export default function TeamDashboard() {
     }
   };
 
-  const attemptDungeon = async (dungeonId: string) => {
+  const attemptDungeon = async (dungeonId: string, rank: string) => {
     try {
       const dungeon = dungeons.find(d => d.id === dungeonId);
       if (!dungeon) throw new Error("Dungeon not found");
@@ -362,13 +397,15 @@ export default function TeamDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4">
-              {team.players.map(player => (
-                <Card key={player.id} className="p-4">
+              {team.players.map(player => {
+                const activeBonuses = getActiveSetBonuses(player, inventory);
+                return (
+                <Card key={player.id} className="p-4 flex flex-col">
                   <CardHeader className="p-0 mb-2">
                     <CardTitle className="text-lg">{player.name}</CardTitle>
                     <p className="text-sm text-muted-foreground capitalize">{player.character_class}</p>
                   </CardHeader>
-                  <CardContent className="p-0 text-sm space-y-1">
+                  <CardContent className="p-0 text-sm space-y-1 flex-grow">
                     <p><Heart className="inline h-4 w-4 mr-1 text-red-500" />{player.health} HP</p>
                     <p><Zap className="inline h-4 w-4 mr-1 text-blue-500" />{player.mana} MP</p>
                     <p><Sword className="inline h-4 w-4 mr-1 text-gray-600" />{player.attack} ATK</p>
@@ -379,8 +416,20 @@ export default function TeamDashboard() {
                       Equip
                     </Button>
                   </div>
+                  {activeBonuses.length > 0 && (
+                    <div className="mt-4 pt-2 border-t">
+                      <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Active Set Bonuses</h4>
+                      <div className="space-y-1">
+                        {activeBonuses.map(b => (
+                          <p key={b.bonus} className="text-xs text-green-400">
+                            <span className="font-bold">({b.count}) {b.setName}:</span> {b.bonus}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </Card>
-              ))}
+              )})}
             </div>
             <div className="mt-4 text-center">
               <p className="font-semibold">Team Stamina: <span className="text-primary font-bold">{team.stamina}</span></p>
@@ -432,7 +481,7 @@ export default function TeamDashboard() {
                       </Badge>
                     </div>
                     <Button
-                      onClick={() => attemptDungeon(dungeon.id)}
+                      onClick={() => attemptDungeon(dungeon.id, dungeon.rank)}
                       disabled={!canAttempt || hasPendingAttempt}
                       className="w-full"
                       variant={canAttempt ? "default" : "secondary"}
