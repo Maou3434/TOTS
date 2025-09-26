@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, CheckCircle, XCircle, Clock, Crown } from 'lucide-react';
+import { LogOut, CheckCircle, XCircle, Clock, Crown, BookOpen } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
+import { Link } from 'react-router-dom';
 
 type Player = Database['public']['Tables']['players']['Row'];
 
@@ -241,10 +242,18 @@ export default function AdminDashboard() {
             </h1>
             <p className="text-muted-foreground">Manage dungeon attempts and approve rewards</p>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/game-data">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Game Guide
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sword, Shield, Zap, Crown, Users, Trophy } from 'lucide-react';
+import { Sword, Shield, Zap, Crown, Users, Trophy, BookOpen } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -16,12 +16,20 @@ const Index = () => {
             Form your team, choose your class, and conquer legendary dungeons to earn epic rewards. 
             Your adventure awaits in the depths below!
           </p>
-          <Link to="/auth">
-            <Button size="lg" className="text-lg px-8 py-4">
-              <Sword className="mr-2 h-5 w-5" />
-              Begin Your Adventure
-            </Button>
-          </Link>
+          <div className="flex justify-center gap-4">
+            <Link to="/auth">
+              <Button size="lg" className="text-lg px-8 py-4">
+                <Sword className="mr-2 h-5 w-5" />
+                Begin Your Adventure
+              </Button>
+            </Link>
+            <Link to="/game-data">
+              <Button size="lg" variant="outline" className="text-lg px-8 py-4">
+                <BookOpen className="mr-2 h-5 w-5" />
+                Game Guide
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Features Grid */}

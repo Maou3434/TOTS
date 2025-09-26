@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, Sword, Shield, Zap, Heart, Star, Package, Users } from 'lucide-react';
+import { LogOut, Sword, Shield, Zap, Heart, Star, Package, Users, BookOpen } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
+import { Link } from 'react-router-dom';
 
 interface Dungeon {
   id: string;
@@ -175,10 +176,18 @@ export default function TeamDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-primary">⚔️ {team.team_name}</h1>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/game-data">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Game Guide
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Team Stats & Players */}
