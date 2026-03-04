@@ -163,7 +163,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInAsAdmin = async (username: string, password: string) => {
-    if (username !== 'admin' || password !== 'toc2070') {
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+    
+    if (!adminPassword) {
+      console.error('VITE_ADMIN_PASSWORD is not defined in environment variables');
+      return { error: 'Admin login is currently unavailable. Please contact the system administrator.' };
+    }
+
+    if (username !== 'admin' || password !== adminPassword) {
       return { error: 'Invalid admin credentials' };
     }
 
